@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Doctor {
+  id                 String         @id @default(auto()) @map("_id") @db.ObjectId
+  fullName           String
+  qualification      String
+  registrationNumber String
+  specialization     String
+  mobileNumber       String
+  email              String         @unique
+  passwordHash       String
+  clinicName         String
+  clinicAddress      String
+  consultationTiming String
+  clinicPhone        String
+  clinicLogoUrl      String?
+  signatureUrl       String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  patients           Patient[]
+  prescriptions      Prescription[]
+}
+
+model Patient {
+  id                 String         @id @default(auto()) @map("_id") @db.ObjectId
+  doctorId           String         @db.ObjectId
+  fullName           String
+  age                Int
+  gender             String
+  phoneNumber        String
+  weight             String?
+  bloodPressure      String?
+  diabetesStatus     String?
+  allergies          String?
+  existingConditions String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  doctor             Doctor         @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  prescriptions      Prescription[]
+
+  @@index([doctorId])
+  @@index([phoneNumber])
+}
+
+model Prescription {
+  id                String          @id @default(auto()) @map("_id") @db.ObjectId
+  doctorId          String          @db.ObjectId
+  patientId         String          @db.ObjectId
+  symptoms          String?
+  diagnosis         String?
+  bp                String?
+  temperature       String?
+  weight            String?
+  pulse             String?
+  advice            String?
+  labTests          String?
+  followUpDate      DateTime?
+  consultationFee   Float           @default(0)
+  additionalCharges Float           @default(0)
+  discount          Float           @default(0)
+  totalPayable      Float           @default(0)
+  secureToken       String          @unique
+  pdfUrl            String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  doctor            Doctor          @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  patient           Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  medicines         MedicineEntry[]
+}
+
+model MedicineEntry {
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  prescriptionId String       @db.ObjectId
+  name           String
+  strength       String?
+  morning        Boolean      @default(false)
+  afternoon      Boolean      @default(false)
+  night          Boolean      @default(false)
+  foodRelation   String?
+  duration       String?
+  instructions   String?
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+}
