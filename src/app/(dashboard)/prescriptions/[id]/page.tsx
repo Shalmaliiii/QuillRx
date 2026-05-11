@@ -46,7 +46,7 @@ export default function PrescriptionDetailPage({
 
   const pdfUrl = `/api/prescriptions/${id}/pdf`;
   const appUrl = typeof window !== "undefined" ? window.location.origin : "";
-  const shareUrl = `${appUrl}/prescriptions/${id}/pdf`;
+  const shareUrl = `${appUrl}/api/prescriptions/${id}/pdf`;
 
   const handleWhatsApp = () => {
     if (!prescription) return;

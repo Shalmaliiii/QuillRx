@@ -9,7 +9,7 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (data: Record<string, string>) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -76,8 +76,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push("/dashboard");
   };
 
-  const logout = () => {
-    document.cookie = "quillrx_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+  const logout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
     setDoctor(null);
     router.push("/login");
   };
