@@ -1,36 +1,60 @@
 import { NextResponse } from "next/server";
-import { getCurrentDoctor } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { patientSchema } from "@/lib/validations";
+import { prisma } from "@/lib/db";
+import { getAuthDoctorId } from "@/lib/auth";
+import { patientSchema } from "@/lib/validators";
 
-export async function GET(req: Request) {
-  const doctor = await getCurrentDoctor();
-  if (!doctor) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const { searchParams } = new URL(req.url);
-  const q = searchParams.get("q") || "";
+export async function GET() {
+  try {
+    const doctorId = await getAuthDoctorId();
+    if (!doctorId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  const patients = await prisma.patient.findMany({
-    where: {
-      doctorId: doctor.id,
-      OR: q
-        ? [{ fullName: { contains: q, mode: "insensitive" } }, { phoneNumber: { contains: q } }]
-        : undefined,
-    },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+    const patients = await prisma.patient.findMany({
+      where: { doctorId },
+      orderBy: { updatedAt: "desc" },
+    });
 
-  return NextResponse.json(patients);
+    return NextResponse.json(patients);
+  } catch (error) {
+    console.error("Patients list error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
 }
 
-export async function POST(req: Request) {
-  const doctor = await getCurrentDoctor();
-  if (!doctor) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const parsed = patientSchema.safeParse(await req.json());
-  if (!parsed.success) return NextResponse.json({ error: "Invalid data" }, { status: 400 });
+export async function POST(request: Request) {
+  try {
+    const doctorId = await getAuthDoctorId();
+    if (!doctorId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  const patient = await prisma.patient.create({
-    data: { ...parsed.data, doctorId: doctor.id },
-  });
-  return NextResponse.json(patient);
+    const body = await request.json();
+    const validated = patientSchema.safeParse(body);
+
+    if (!validated.success) {
+      return NextResponse.json(
+        { error: validated.error.issues[0].message },
+        { status: 400 }
+      );
+    }
+
+    const patient = await prisma.patient.create({
+      data: {
+        ...validated.data,
+        doctorId,
+      },
+    });
+
+    return NextResponse.json(patient, { status: 201 });
+  } catch (error) {
+    console.error("Patient create error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
 }

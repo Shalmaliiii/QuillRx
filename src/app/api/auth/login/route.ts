@@ -1,25 +1,55 @@
 import { NextResponse } from "next/server";
-import { sessionCookieName, signToken, verifyPassword } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { loginSchema } from "@/lib/validations";
+import { prisma } from "@/lib/db";
+import { verifyPassword, generateToken, setAuthCookie } from "@/lib/auth";
+import { loginSchema } from "@/lib/validators";
 
-export async function POST(req: Request) {
-  const parsed = loginSchema.safeParse(await req.json());
-  if (!parsed.success) return NextResponse.json({ error: "Invalid credentials" }, { status: 400 });
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const validated = loginSchema.safeParse(body);
 
-  const doctor = await prisma.doctor.findUnique({ where: { email: parsed.data.email } });
-  if (!doctor) return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
-  const ok = await verifyPassword(parsed.data.password, doctor.passwordHash);
-  if (!ok) return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+    if (!validated.success) {
+      return NextResponse.json(
+        { error: validated.error.issues[0].message },
+        { status: 400 }
+      );
+    }
 
-  const token = signToken({ doctorId: doctor.id, email: doctor.email });
-  const res = NextResponse.json({ ok: true });
-  res.cookies.set(sessionCookieName, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7,
-  });
-  return res;
+    const doctor = await prisma.doctor.findUnique({
+      where: { email: validated.data.email },
+    });
+
+    if (!doctor) {
+      return NextResponse.json(
+        { error: "Invalid email or password" },
+        { status: 401 }
+      );
+    }
+
+    const isValid = await verifyPassword(validated.data.password, doctor.password);
+    if (!isValid) {
+      return NextResponse.json(
+        { error: "Invalid email or password" },
+        { status: 401 }
+      );
+    }
+
+    const token = generateToken(doctor.id);
+    const cookie = setAuthCookie(token);
+
+    const response = NextResponse.json({
+      id: doctor.id,
+      email: doctor.email,
+      fullName: doctor.fullName,
+    });
+
+    response.cookies.set(cookie.name, cookie.value, cookie.options as Parameters<typeof response.cookies.set>[2]);
+    return response;
+  } catch (error) {
+    console.error("Login error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
 }

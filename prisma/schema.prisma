@@ -9,19 +9,19 @@ datasource db {
 
 model Doctor {
   id                 String         @id @default(auto()) @map("_id") @db.ObjectId
+  email              String         @unique
+  password           String
   fullName           String
   qualification      String
   registrationNumber String
   specialization     String
   mobileNumber       String
-  email              String         @unique
-  passwordHash       String
-  clinicName         String
-  clinicAddress      String
-  consultationTiming String
-  clinicPhone        String
-  clinicLogoUrl      String?
+  clinicName         String?
+  clinicAddress      String?
+  consultationTimings String?
+  clinicPhone        String?
   signatureUrl       String?
+  logoUrl            String?
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
   patients           Patient[]
@@ -34,57 +34,60 @@ model Patient {
   fullName           String
   age                Int
   gender             String
-  phoneNumber        String
+  phone              String
   weight             String?
-  bloodPressure      String?
+  bp                 String?
   diabetesStatus     String?
   allergies          String?
   existingConditions String?
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
-  doctor             Doctor         @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  doctor             Doctor         @relation(fields: [doctorId], references: [id])
   prescriptions      Prescription[]
 
   @@index([doctorId])
-  @@index([phoneNumber])
+  @@index([phone])
+}
+
+type Vital {
+  bp          String?
+  temperature String?
+  weight      String?
+  pulse       String?
+}
+
+type Medicine {
+  name                String
+  strength            String?
+  morning             Boolean  @default(false)
+  afternoon           Boolean  @default(false)
+  night               Boolean  @default(false)
+  beforeFood          Boolean  @default(false)
+  duration            String?
+  specialInstructions String?
 }
 
 model Prescription {
-  id                String          @id @default(auto()) @map("_id") @db.ObjectId
-  doctorId          String          @db.ObjectId
-  patientId         String          @db.ObjectId
+  id                String     @id @default(auto()) @map("_id") @db.ObjectId
+  doctorId          String     @db.ObjectId
+  patientId         String     @db.ObjectId
   symptoms          String?
   diagnosis         String?
-  bp                String?
-  temperature       String?
-  weight            String?
-  pulse             String?
-  advice            String?
+  vitals            Vital?
+  medicines         Medicine[]
   labTests          String?
+  advice            String?
   followUpDate      DateTime?
-  consultationFee   Float           @default(0)
-  additionalCharges Float           @default(0)
-  discount          Float           @default(0)
-  totalPayable      Float           @default(0)
-  secureToken       String          @unique
+  consultationFee   Float?     @default(0)
+  additionalCharges Float?     @default(0)
+  discount          Float?     @default(0)
+  totalAmount       Float?     @default(0)
   pdfUrl            String?
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  doctor            Doctor          @relation(fields: [doctorId], references: [id], onDelete: Cascade)
-  patient           Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  medicines         MedicineEntry[]
-}
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  doctor            Doctor     @relation(fields: [doctorId], references: [id])
+  patient           Patient    @relation(fields: [patientId], references: [id])
 
-model MedicineEntry {
-  id             String       @id @default(auto()) @map("_id") @db.ObjectId
-  prescriptionId String       @db.ObjectId
-  name           String
-  strength       String?
-  morning        Boolean      @default(false)
-  afternoon      Boolean      @default(false)
-  night          Boolean      @default(false)
-  foodRelation   String?
-  duration       String?
-  instructions   String?
-  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  @@index([doctorId])
+  @@index([patientId])
 }

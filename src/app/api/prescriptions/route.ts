@@ -1,88 +1,117 @@
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import { NextResponse } from "next/server";
-import { nanoid } from "nanoid";
-import { getCurrentDoctor } from "@/lib/auth";
-import { generatePrescriptionPdf } from "@/lib/pdf";
-import { prisma } from "@/lib/prisma";
-import { prescriptionSchema } from "@/lib/validations";
+import { prisma } from "@/lib/db";
+import { getAuthDoctorId } from "@/lib/auth";
+import { prescriptionSchema } from "@/lib/validators";
 
-export async function POST(req: Request) {
-  const doctor = await getCurrentDoctor();
-  if (!doctor) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function GET(request: Request) {
+  try {
+    const doctorId = await getAuthDoctorId();
+    if (!doctorId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  const parsed = prescriptionSchema.safeParse(await req.json());
-  if (!parsed.success) return NextResponse.json({ error: "Invalid data" }, { status: 400 });
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "20");
+    const patientId = searchParams.get("patientId");
 
-  const patient = await prisma.patient.findFirst({
-    where: { id: parsed.data.patientId, doctorId: doctor.id },
-  });
-  if (!patient) return NextResponse.json({ error: "Patient not found" }, { status: 404 });
+    const where: Record<string, unknown> = { doctorId };
+    if (patientId) where.patientId = patientId;
 
-  const total = Math.max(
-    0,
-    parsed.data.consultationFee + parsed.data.additionalCharges - parsed.data.discount,
-  );
-  const secureToken = nanoid(16);
+    const [prescriptions, total] = await Promise.all([
+      prisma.prescription.findMany({
+        where,
+        include: {
+          patient: true,
+        },
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.prescription.count({ where }),
+    ]);
 
-  const created = await prisma.prescription.create({
-    data: {
-      doctorId: doctor.id,
-      patientId: patient.id,
-      symptoms: parsed.data.symptoms,
-      diagnosis: parsed.data.diagnosis,
-      bp: parsed.data.bp,
-      temperature: parsed.data.temperature,
-      weight: parsed.data.weight,
-      pulse: parsed.data.pulse,
-      advice: parsed.data.advice,
-      labTests: parsed.data.labTests,
-      followUpDate: parsed.data.followUpDate ? new Date(parsed.data.followUpDate) : null,
-      consultationFee: parsed.data.consultationFee,
-      additionalCharges: parsed.data.additionalCharges,
-      discount: parsed.data.discount,
-      totalPayable: total,
-      secureToken,
-      medicines: { create: parsed.data.medicines.map((m) => ({ ...m })) },
-    },
-    include: { medicines: true },
-  });
+    return NextResponse.json({ prescriptions, total, page, limit });
+  } catch (error) {
+    console.error("Prescriptions list error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
 
-  const pdf = await generatePrescriptionPdf({
-    clinicName: doctor.clinicName,
-    clinicAddress: doctor.clinicAddress,
-    clinicPhone: doctor.clinicPhone,
-    doctorName: doctor.fullName,
-    qualification: doctor.qualification,
-    registrationNumber: doctor.registrationNumber,
-    patientName: patient.fullName,
-    age: patient.age,
-    gender: patient.gender,
-    date: new Date().toLocaleDateString("en-IN"),
-    diagnosis: created.diagnosis ?? undefined,
-    symptoms: created.symptoms ?? undefined,
-    medicines: created.medicines.map((m) => ({
-      name: m.name,
-      timing: `${m.morning ? "M" : "-"}/${m.afternoon ? "A" : "-"}/${m.night ? "N" : "-"}`,
-      duration: m.duration ?? undefined,
-      instructions: m.instructions ?? undefined,
-    })),
-    advice: created.advice ?? undefined,
-    followUpDate: created.followUpDate?.toLocaleDateString("en-IN"),
-    fees: {
-      consultationFee: created.consultationFee,
-      additionalCharges: created.additionalCharges,
-      discount: created.discount,
-      totalPayable: created.totalPayable,
-    },
-  });
+export async function POST(request: Request) {
+  try {
+    const doctorId = await getAuthDoctorId();
+    if (!doctorId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  const dir = path.join(process.cwd(), "public", "prescriptions");
-  await mkdir(dir, { recursive: true });
-  const fileName = `${secureToken}.pdf`;
-  await writeFile(path.join(dir, fileName), pdf);
-  const pdfUrl = `/prescriptions/${fileName}`;
-  await prisma.prescription.update({ where: { id: created.id }, data: { pdfUrl } });
+    const body = await request.json();
+    const validated = prescriptionSchema.safeParse(body);
 
-  return NextResponse.json({ ok: true, publicUrl: `/rx/${secureToken}`, pdfUrl });
+    if (!validated.success) {
+      return NextResponse.json(
+        { error: validated.error.issues[0].message },
+        { status: 400 }
+      );
+    }
+
+    const { patientId, followUpDate, ...rest } = validated.data;
+
+    const patient = await prisma.patient.findFirst({
+      where: { id: patientId, doctorId },
+    });
+
+    if (!patient) {
+      return NextResponse.json(
+        { error: "Patient not found" },
+        { status: 404 }
+      );
+    }
+
+    const totalAmount =
+      (rest.consultationFee || 0) +
+      (rest.additionalCharges || 0) -
+      (rest.discount || 0);
+
+    const prescription = await prisma.prescription.create({
+      data: {
+        ...rest,
+        patientId,
+        doctorId,
+        totalAmount: Math.max(0, totalAmount),
+        followUpDate: followUpDate ? new Date(followUpDate) : null,
+      },
+      include: {
+        patient: true,
+        doctor: {
+          select: {
+            id: true,
+            email: true,
+            fullName: true,
+            qualification: true,
+            registrationNumber: true,
+            specialization: true,
+            mobileNumber: true,
+            clinicName: true,
+            clinicAddress: true,
+            consultationTimings: true,
+            clinicPhone: true,
+            signatureUrl: true,
+            logoUrl: true,
+          },
+        },
+      },
+    });
+
+    return NextResponse.json(prescription, { status: 201 });
+  } catch (error) {
+    console.error("Prescription create error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
 }
