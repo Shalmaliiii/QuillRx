@@ -1,18 +1,59 @@
 import { NextResponse } from "next/server";
-import { hashPassword } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { registerSchema } from "@/lib/validations";
+import { prisma } from "@/lib/db";
+import { hashPassword, generateToken, setAuthCookie } from "@/lib/auth";
+import { registerSchema } from "@/lib/validators";
 
-export async function POST(req: Request) {
-  const parsed = registerSchema.safeParse(await req.json());
-  if (!parsed.success) return NextResponse.json({ error: "Invalid data" }, { status: 400 });
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const validated = registerSchema.safeParse(body);
 
-  const exists = await prisma.doctor.findUnique({ where: { email: parsed.data.email } });
-  if (exists) return NextResponse.json({ error: "Email already exists" }, { status: 409 });
+    if (!validated.success) {
+      return NextResponse.json(
+        { error: validated.error.issues[0].message },
+        { status: 400 }
+      );
+    }
 
-  const passwordHash = await hashPassword(parsed.data.password);
-  const rest = { ...parsed.data };
-  delete (rest as { password?: string }).password;
-  await prisma.doctor.create({ data: { ...rest, passwordHash } });
-  return NextResponse.json({ ok: true });
+    const existing = await prisma.doctor.findUnique({
+      where: { email: validated.data.email },
+    });
+
+    if (existing) {
+      return NextResponse.json(
+        { error: "An account with this email already exists" },
+        { status: 409 }
+      );
+    }
+
+    const hashedPassword = await hashPassword(validated.data.password);
+
+    const doctor = await prisma.doctor.create({
+      data: {
+        ...validated.data,
+        password: hashedPassword,
+      },
+    });
+
+    const token = generateToken(doctor.id);
+    const cookie = setAuthCookie(token);
+
+    const response = NextResponse.json(
+      {
+        id: doctor.id,
+        email: doctor.email,
+        fullName: doctor.fullName,
+      },
+      { status: 201 }
+    );
+
+    response.cookies.set(cookie.name, cookie.value, cookie.options as Parameters<typeof response.cookies.set>[2]);
+    return response;
+  } catch (error) {
+    console.error("Registration error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
 }

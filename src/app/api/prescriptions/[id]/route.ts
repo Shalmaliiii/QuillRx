@@ -1,0 +1,56 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
+import { getAuthDoctorId } from "@/lib/auth";
+
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const doctorId = await getAuthDoctorId();
+    if (!doctorId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await params;
+
+    const prescription = await prisma.prescription.findFirst({
+      where: { id, doctorId },
+      include: {
+        patient: true,
+        doctor: {
+          select: {
+            id: true,
+            email: true,
+            fullName: true,
+            qualification: true,
+            registrationNumber: true,
+            specialization: true,
+            mobileNumber: true,
+            clinicName: true,
+            clinicAddress: true,
+            consultationTimings: true,
+            clinicPhone: true,
+            signatureUrl: true,
+            logoUrl: true,
+          },
+        },
+      },
+    });
+
+    if (!prescription) {
+      return NextResponse.json(
+        { error: "Prescription not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(prescription);
+  } catch (error) {
+    console.error("Prescription get error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}

@@ -1,46 +1,54 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
 
-const COOKIE_KEY = "quillrx_session";
-const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
+const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret-change-me";
+const TOKEN_EXPIRY = "7d";
+const COOKIE_NAME = "quillrx_token";
 
-type TokenPayload = { doctorId: string; email: string };
-
-export async function hashPassword(password: string) {
+export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 12);
 }
 
-export async function verifyPassword(password: string, hash: string) {
-  return bcrypt.compare(password, hash);
+export async function verifyPassword(
+  password: string,
+  hashedPassword: string
+): Promise<boolean> {
+  return bcrypt.compare(password, hashedPassword);
 }
 
-export function signToken(payload: TokenPayload) {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
+export function generateToken(doctorId: string): string {
+  return jwt.sign({ doctorId }, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
 }
 
-export function verifyToken(token: string): TokenPayload | null {
+export function verifyToken(token: string): { doctorId: string } | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as TokenPayload;
+    return jwt.verify(token, JWT_SECRET) as { doctorId: string };
   } catch {
     return null;
   }
 }
 
-export async function getCurrentDoctor() {
-  const token = (await cookies()).get(COOKIE_KEY)?.value;
+export async function getAuthDoctorId(): Promise<string | null> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE_NAME)?.value;
   if (!token) return null;
   const payload = verifyToken(token);
-  if (!payload) return null;
-  return prisma.doctor.findUnique({ where: { id: payload.doctorId } });
+  return payload?.doctorId ?? null;
 }
 
-export async function requireDoctor() {
-  const doctor = await getCurrentDoctor();
-  if (!doctor) redirect("/login");
-  return doctor;
+export function setAuthCookie(token: string): { name: string; value: string; options: Record<string, unknown> } {
+  return {
+    name: COOKIE_NAME,
+    value: token,
+    options: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax" as const,
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
+    },
+  };
 }
 
-export const sessionCookieName = COOKIE_KEY;
+export const COOKIE_NAME_EXPORT = COOKIE_NAME;

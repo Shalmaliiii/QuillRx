@@ -1,22 +1,57 @@
 import { NextResponse } from "next/server";
-import { getCurrentDoctor } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { storeBinary } from "@/lib/storage";
+import { prisma } from "@/lib/db";
+import { getAuthDoctorId } from "@/lib/auth";
+import { saveFile } from "@/lib/upload";
 
-export async function POST(req: Request) {
-  const doctor = await getCurrentDoctor();
-  if (!doctor) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function POST(request: Request) {
+  try {
+    const doctorId = await getAuthDoctorId();
+    if (!doctorId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  const form = await req.formData();
-  const type = String(form.get("type") || "logo");
-  const file = form.get("file");
-  if (!(file instanceof File)) return NextResponse.json({ error: "File missing" }, { status: 400 });
+    const formData = await request.formData();
+    const file = formData.get("file") as File | null;
+    const type = formData.get("type") as string | null;
 
-  const url = await storeBinary(file, type === "signature" ? "signatures" : "logos");
-  await prisma.doctor.update({
-    where: { id: doctor.id },
-    data: type === "signature" ? { signatureUrl: url } : { clinicLogoUrl: url },
-  });
+    if (!file) {
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    }
 
-  return NextResponse.json({ ok: true, url });
+    const allowedTypes = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
+    if (!allowedTypes.includes(file.type)) {
+      return NextResponse.json(
+        { error: "Invalid file type. Only PNG, JPEG, WebP, and SVG are allowed." },
+        { status: 400 }
+      );
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      return NextResponse.json(
+        { error: "File too large. Maximum size is 5MB." },
+        { status: 400 }
+      );
+    }
+
+    const url = await saveFile(file);
+
+    if (type === "signature" || type === "logo") {
+      const updateData = type === "signature"
+        ? { signatureUrl: url }
+        : { logoUrl: url };
+
+      await prisma.doctor.update({
+        where: { id: doctorId },
+        data: updateData,
+      });
+    }
+
+    return NextResponse.json({ url });
+  } catch (error) {
+    console.error("Upload error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
 }
