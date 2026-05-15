@@ -18,6 +18,7 @@ export async function generatePrescriptionPDF(
   const primaryColor = rgb(0.1, 0.45, 0.55);
   const textColor = rgb(0.1, 0.1, 0.1);
   const mutedColor = rgb(0.4, 0.4, 0.4);
+  const doctorDisplayName = doctor.fullName?.startsWith("Dr.") ? doctor.fullName : `Dr. ${doctor.fullName}`;
 
   // Header - Clinic Name
   if (doctor.clinicName) {
@@ -32,7 +33,7 @@ export async function generatePrescriptionPDF(
   }
 
   // Doctor details
-  page.drawText(`Dr. ${doctor.fullName}`, {
+  page.drawText(doctorDisplayName, {
     x: margin,
     y,
     size: 14,
@@ -416,7 +417,7 @@ export async function generatePrescriptionPDF(
     thickness: 0.5,
     color: rgb(0.7, 0.7, 0.7),
   });
-  page.drawText(`Dr. ${doctor.fullName}`, {
+  page.drawText(doctorDisplayName, {
     x: width - margin - 130,
     y: footerY + 15,
     size: 10,
