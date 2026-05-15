@@ -17,7 +17,10 @@ export default function PatientsPage() {
 
   useEffect(() => {
     fetch("/api/patients")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load patients");
+        return res.json();
+      })
       .then(setPatients)
       .catch(console.error)
       .finally(() => setLoading(false));

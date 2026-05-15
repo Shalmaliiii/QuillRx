@@ -370,7 +370,7 @@ export async function generatePrescriptionPDF(
 
     const feeX = width - margin - 200;
     if (prescription.consultationFee) {
-      page.drawText(`Consultation Fee: ₹${prescription.consultationFee}`, {
+      page.drawText(`Consultation Fee: Rs.${prescription.consultationFee}`, {
         x: feeX,
         y,
         size: 9,
@@ -380,7 +380,7 @@ export async function generatePrescriptionPDF(
       y -= 13;
     }
     if (prescription.additionalCharges && prescription.additionalCharges > 0) {
-      page.drawText(`Additional: ₹${prescription.additionalCharges}`, {
+      page.drawText(`Additional: Rs.${prescription.additionalCharges}`, {
         x: feeX,
         y,
         size: 9,
@@ -390,7 +390,7 @@ export async function generatePrescriptionPDF(
       y -= 13;
     }
     if (prescription.discount && prescription.discount > 0) {
-      page.drawText(`Discount: -₹${prescription.discount}`, {
+      page.drawText(`Discount: -Rs.${prescription.discount}`, {
         x: feeX,
         y,
         size: 9,
@@ -399,7 +399,7 @@ export async function generatePrescriptionPDF(
       });
       y -= 13;
     }
-    page.drawText(`Total: ₹${prescription.totalAmount}`, {
+    page.drawText(`Total: Rs.${prescription.totalAmount}`, {
       x: feeX,
       y,
       size: 11,

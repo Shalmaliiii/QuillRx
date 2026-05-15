@@ -42,7 +42,10 @@ export default function PatientDetailPage({
 
   useEffect(() => {
     fetch(`/api/patients/${id}`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load patient");
+        return res.json();
+      })
       .then(setPatient)
       .catch(console.error)
       .finally(() => setLoading(false));
