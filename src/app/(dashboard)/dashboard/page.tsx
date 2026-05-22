@@ -50,7 +50,7 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">
-            Good {getGreeting()}, {doctor?.fullName?.startsWith("Dr.") ? doctor.fullName.split(" ").slice(0, 2).join(" ") : `Dr. ${doctor?.fullName?.split(" ")[0]}`}
+            Good {getGreeting()}, {doctor?.fullName?.startsWith("Dr.") ? doctor.fullName.split(" ").slice(0, 2).join(" ") : `Dr. ${doctor?.fullName?.split(" ")[0] ?? ""}`}
           </h1>
           <p className="text-muted-foreground mt-1">
             {format(new Date(), "EEEE, MMMM d, yyyy")}
