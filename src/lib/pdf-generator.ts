@@ -18,6 +18,7 @@ export async function generatePrescriptionPDF(
   const primaryColor = rgb(0.1, 0.45, 0.55);
   const textColor = rgb(0.1, 0.1, 0.1);
   const mutedColor = rgb(0.4, 0.4, 0.4);
+  const doctorDisplayName = doctor.fullName?.startsWith("Dr.") ? doctor.fullName : `Dr. ${doctor.fullName}`;
 
   // Header - Clinic Name
   if (doctor.clinicName) {
@@ -32,7 +33,7 @@ export async function generatePrescriptionPDF(
   }
 
   // Doctor details
-  page.drawText(`Dr. ${doctor.fullName}`, {
+  page.drawText(doctorDisplayName, {
     x: margin,
     y,
     size: 14,
@@ -370,7 +371,7 @@ export async function generatePrescriptionPDF(
 
     const feeX = width - margin - 200;
     if (prescription.consultationFee) {
-      page.drawText(`Consultation Fee: ₹${prescription.consultationFee}`, {
+      page.drawText(`Consultation Fee: Rs.${prescription.consultationFee}`, {
         x: feeX,
         y,
         size: 9,
@@ -380,7 +381,7 @@ export async function generatePrescriptionPDF(
       y -= 13;
     }
     if (prescription.additionalCharges && prescription.additionalCharges > 0) {
-      page.drawText(`Additional: ₹${prescription.additionalCharges}`, {
+      page.drawText(`Additional: Rs.${prescription.additionalCharges}`, {
         x: feeX,
         y,
         size: 9,
@@ -390,7 +391,7 @@ export async function generatePrescriptionPDF(
       y -= 13;
     }
     if (prescription.discount && prescription.discount > 0) {
-      page.drawText(`Discount: -₹${prescription.discount}`, {
+      page.drawText(`Discount: -Rs.${prescription.discount}`, {
         x: feeX,
         y,
         size: 9,
@@ -399,7 +400,7 @@ export async function generatePrescriptionPDF(
       });
       y -= 13;
     }
-    page.drawText(`Total: ₹${prescription.totalAmount}`, {
+    page.drawText(`Total: Rs.${prescription.totalAmount}`, {
       x: feeX,
       y,
       size: 11,
@@ -416,7 +417,7 @@ export async function generatePrescriptionPDF(
     thickness: 0.5,
     color: rgb(0.7, 0.7, 0.7),
   });
-  page.drawText(`Dr. ${doctor.fullName}`, {
+  page.drawText(doctorDisplayName, {
     x: width - margin - 130,
     y: footerY + 15,
     size: 10,
