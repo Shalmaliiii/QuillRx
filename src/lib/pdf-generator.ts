@@ -3,10 +3,12 @@ import type { PrescriptionData, DoctorProfile } from "@/types";
 import { readFile } from "fs/promises";
 import path from "path";
 import QRCode from "qrcode";
+import { UPLOAD_DIR } from "@/lib/upload";
 
 async function embedImage(pdfDoc: PDFDocument, filePath: string) {
   try {
-    const absolutePath = path.join(process.cwd(), "public", filePath);
+    const filename = path.basename(filePath);
+    const absolutePath = path.join(UPLOAD_DIR, filename);
     const imageBytes = await readFile(absolutePath);
     const ext = path.extname(filePath).toLowerCase();
     if (ext === ".png") {
