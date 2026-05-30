@@ -64,36 +64,32 @@ export async function generatePrescriptionPDF(
   const headerHeight = 80;
   drawRoundedRect(page, 0, height - headerHeight, width, headerHeight, primary);
 
-  // Embed logo if available
+  // Embed logo if available (already circular from upload processing)
   let logoEndX = margin + 10;
   if (doctor.logoUrl) {
     const logoImage = await embedImage(pdfDoc, doctor.logoUrl);
     if (logoImage) {
-      const logoDim = logoImage.scale(1);
-      const maxH = 50;
-      const maxW = 50;
-      const scale = Math.min(maxW / logoDim.width, maxH / logoDim.height);
-      const lw = logoDim.width * scale;
-      const lh = logoDim.height * scale;
+      const logoSize = 55;
       const logoX = margin + 10;
-      const logoY = height - headerHeight / 2 - lh / 2;
+      const logoCenterX = logoX + logoSize / 2;
+      const logoCenterY = height - headerHeight / 2;
 
-      // White circle background for logo
+      // White ring behind logo
       page.drawCircle({
-        x: logoX + lw / 2,
-        y: logoY + lh / 2,
-        size: Math.max(lw, lh) / 2 + 5,
+        x: logoCenterX,
+        y: logoCenterY,
+        size: logoSize / 2 + 4,
         color: white,
-        opacity: 0.2,
+        opacity: 0.3,
       });
 
       page.drawImage(logoImage, {
         x: logoX,
-        y: logoY,
-        width: lw,
-        height: lh,
+        y: logoCenterY - logoSize / 2,
+        width: logoSize,
+        height: logoSize,
       });
-      logoEndX = logoX + lw + 15;
+      logoEndX = logoX + logoSize + 15;
     }
   }
 
