@@ -38,7 +38,10 @@ export default function PrescriptionDetailPage({
 
   useEffect(() => {
     fetch(`/api/prescriptions/${id}`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load prescription");
+        return res.json();
+      })
       .then(setPrescription)
       .catch(console.error)
       .finally(() => setLoading(false));

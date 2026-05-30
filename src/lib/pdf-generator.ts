@@ -81,7 +81,7 @@ export async function generatePrescriptionPDF(
         size: logoSize / 2 + 4,
         color: white,
         opacity: 0.3,
-      });
+      }); 
 
       page.drawImage(logoImage, {
         x: logoX,
