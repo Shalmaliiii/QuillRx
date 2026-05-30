@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-import { ArrowLeft, PlusCircle, FileText } from "lucide-react";
+import { PlusCircle, FileText } from "lucide-react";
+import { usePageHeader } from "@/contexts/page-header-context";
 import { format } from "date-fns";
 
 interface PatientDetail {
@@ -51,6 +52,14 @@ export default function PatientDetailPage({
       .finally(() => setLoading(false));
   }, [id]);
 
+  usePageHeader({
+    title: patient?.fullName ?? "Patient",
+    description: patient
+      ? `${patient.age}y / ${patient.gender} · ${patient.phone}`
+      : undefined,
+    backHref: "/patients",
+  });
+
   if (loading) {
     return <p className="text-center text-muted-foreground py-12">Loading...</p>;
   }
@@ -61,18 +70,7 @@ export default function PatientDetailPage({
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      <div className="flex items-center gap-3">
-        <Link href="/patients">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold">{patient.fullName}</h1>
-          <p className="text-muted-foreground text-sm">
-            {patient.age}y / {patient.gender} &middot; {patient.phone}
-          </p>
-        </div>
+      <div className="flex justify-end">
         <Link href={`/prescriptions/new?patientId=${patient.id}`}>
           <Button>
             <PlusCircle className="h-4 w-4 mr-2" />

@@ -8,12 +8,18 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { PlusCircle, Search, Users } from "lucide-react";
 import type { PatientData } from "@/types";
+import { usePageHeader } from "@/contexts/page-header-context";
 import { format } from "date-fns";
 
 export default function PatientsPage() {
   const [patients, setPatients] = useState<PatientData[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+
+  usePageHeader({
+    title: "Patients",
+    description: "Manage your patient records",
+  });
 
   useEffect(() => {
     fetch("/api/patients")
@@ -34,13 +40,7 @@ export default function PatientsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Patients</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Manage your patient records
-          </p>
-        </div>
+      <div className="flex justify-end">
         <Link href="/patients/new">
           <Button>
             <PlusCircle className="h-4 w-4 mr-2" />

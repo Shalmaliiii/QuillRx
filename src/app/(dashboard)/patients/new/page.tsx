@@ -10,14 +10,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, ArrowLeft } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { patientSchema, type PatientInput } from "@/lib/validators";
+import { usePageHeader } from "@/contexts/page-header-context";
 import { toast } from "sonner";
-import Link from "next/link";
 
 export default function NewPatientPage() {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
+
+  usePageHeader({ title: "Add New Patient", backHref: "/patients" });
 
   const {
     register,
@@ -55,15 +57,6 @@ export default function NewPatientPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <Link href="/patients">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <h1 className="text-2xl font-bold">Add New Patient</h1>
-      </div>
-
       <Card>
         <CardHeader>
           <CardTitle>Patient Details</CardTitle>

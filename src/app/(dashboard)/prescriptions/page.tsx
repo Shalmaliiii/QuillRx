@@ -5,7 +5,8 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PlusCircle, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
+import { usePageHeader } from "@/contexts/page-header-context";
 import { format } from "date-fns";
 
 interface PrescriptionListItem {
@@ -59,23 +60,13 @@ export default function PrescriptionsPage() {
 
   const totalPages = Math.ceil(total / 20);
 
+  usePageHeader({
+    title: "Prescriptions",
+    description: `${total} total prescription${total !== 1 ? "s" : ""}`,
+  });
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Prescriptions</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            {total} total prescription{total !== 1 ? "s" : ""}
-          </p>
-        </div>
-        <Link href="/prescriptions/new">
-          <Button>
-            <PlusCircle className="h-4 w-4 mr-2" />
-            New Prescription
-          </Button>
-        </Link>
-      </div>
-
       {loading ? (
         <p className="text-center text-muted-foreground py-12">Loading...</p>
       ) : prescriptions.length === 0 ? (

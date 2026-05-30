@@ -8,12 +8,10 @@ import {
   FileText,
   Settings,
   PlusCircle,
-  LogOut,
   Pill,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -25,11 +23,11 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { doctor, logout } = useAuth();
+  const { doctor } = useAuth();
 
   return (
     <aside className="hidden md:flex w-64 flex-col border-r bg-card h-screen sticky top-0">
-      <div className="p-6 border-b">
+      <div className="h-20 px-6 flex flex-col justify-center border-b">
         <Link href="/dashboard" className="flex items-center gap-2">
           <Pill className="h-7 w-7 text-primary" />
           <span className="text-xl font-bold tracking-tight">QuillRx</span>
@@ -63,24 +61,9 @@ export function Sidebar() {
       </nav>
 
       <div className="p-4 border-t">
-        <div className="flex items-center gap-3 mb-3 px-2">
-          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">
-            {doctor?.fullName?.charAt(0) || "D"}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{doctor?.fullName || "Doctor"}</p>
-            <p className="text-xs text-muted-foreground truncate">{doctor?.email}</p>
-          </div>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start text-muted-foreground"
-          onClick={logout}
-        >
-          <LogOut className="h-4 w-4 mr-2" />
-          Sign out
-        </Button>
+        <p className="px-2 text-xs text-muted-foreground">
+          {doctor?.clinicName || "QuillRx"}
+        </p>
       </div>
     </aside>
   );
