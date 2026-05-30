@@ -168,16 +168,16 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex items-center gap-6">
-            <div className="w-20 h-20 rounded-lg border-2 border-dashed flex items-center justify-center bg-muted/50 overflow-hidden shrink-0">
+            <div className="w-20 h-20 rounded-full border-2 border-dashed flex items-center justify-center bg-muted/50 overflow-hidden shrink-0">
               {doctor?.logoUrl ? (
-                <Image src={doctor.logoUrl} alt="Clinic logo" width={80} height={80} className="w-full h-full object-contain" />
+                <Image src={doctor.logoUrl} alt="Clinic logo" width={80} height={80} className="w-full h-full object-cover rounded-full" />
               ) : (
                 <ImageIcon className="h-8 w-8 text-muted-foreground/40" />
               )}
             </div>
             <div className="flex-1">
               <p className="font-medium text-sm">Clinic Logo</p>
-              <p className="text-xs text-muted-foreground mb-2">PNG, JPEG, or SVG. Max 5MB.</p>
+              <p className="text-xs text-muted-foreground mb-2">PNG, JPEG, or SVG. Max 5MB. Will be auto-cropped to a circle.</p>
               <input
                 ref={logoInputRef}
                 type="file"

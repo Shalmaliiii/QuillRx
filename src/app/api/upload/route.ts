@@ -33,7 +33,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const url = await saveFile(file);
+    const url = await saveFile(file, type ?? undefined);
 
     if (type === "signature" || type === "logo") {
       const updateData = type === "signature"
