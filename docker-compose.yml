@@ -9,9 +9,9 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
       - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
-      - UPLOAD_DIR=/app/public/uploads
+      - UPLOAD_DIR=/app/uploads
     volumes:
-      - uploads:/app/public/uploads
+      - uploads:/app/uploads
     restart: unless-stopped
 
 volumes:

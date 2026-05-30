@@ -2,7 +2,7 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR || "./public/uploads";
+export const UPLOAD_DIR = process.env.UPLOAD_DIR || "./uploads";
 
 export async function saveFile(file: File): Promise<string> {
   const bytes = await file.arrayBuffer();
