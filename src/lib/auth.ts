@@ -43,7 +43,7 @@ export function setAuthCookie(token: string): { name: string; value: string; opt
     value: token,
     options: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: process.env.FORCE_HTTPS === "true",
       sameSite: "lax" as const,
       maxAge: 60 * 60 * 24 * 7,
       path: "/",
