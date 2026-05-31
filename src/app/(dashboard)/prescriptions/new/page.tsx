@@ -34,6 +34,7 @@ export default function NewPrescriptionPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedPatientId = searchParams.get("patientId");
+  const prefilledSymptoms = searchParams.get("symptoms");
 
   usePageHeader({ title: "New Prescription", backHref: "/prescriptions" });
 
@@ -76,6 +77,12 @@ export default function NewPrescriptionPage() {
         .catch(console.error);
     }
   }, [preselectedPatientId]);
+
+  useEffect(() => {
+    if (prefilledSymptoms) {
+      setSymptoms((prev) => prev || prefilledSymptoms);
+    }
+  }, [prefilledSymptoms]);
 
   const searchPatients = useCallback(async (q: string) => {
     if (q.length < 2) {

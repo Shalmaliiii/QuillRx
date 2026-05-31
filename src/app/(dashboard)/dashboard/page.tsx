@@ -190,7 +190,12 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               {data && data.series.length > 0 ? (
-                <TrendAreaChart data={data.series} valueKey="count" className="text-primary" />
+                <TrendAreaChart
+                  data={data.series}
+                  valueKey="count"
+                  className="text-primary"
+                  formatValue={(d) => `${d.count} consultation${d.count === 1 ? "" : "s"}`}
+                />
               ) : (
                 <div className="h-32" />
               )}
@@ -223,9 +228,7 @@ export default function DashboardPage() {
                 <TrendBarChart
                   data={data.series}
                   className="text-chart-4"
-                  formatTooltip={(d) =>
-                    `${d.label ?? format(new Date(d.date), "d MMM")}: ${inr(d.revenue)}`
-                  }
+                  formatValue={(d) => inr(d.revenue)}
                 />
               ) : (
                 <div className="h-32" />

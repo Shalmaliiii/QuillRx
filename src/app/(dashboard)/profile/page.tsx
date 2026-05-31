@@ -19,12 +19,14 @@ import {
   Send,
   Download,
   Printer,
+  LogOut,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { usePageHeader } from "@/contexts/page-header-context";
+import { QueueQRCard } from "@/components/queue/queue-qr-card";
 
 export default function ProfilePage() {
-  const { doctor } = useAuth();
+  const { doctor, logout } = useAuth();
 
   usePageHeader({
     title: "Profile",
@@ -77,12 +79,22 @@ export default function ProfilePage() {
                 </p>
               </div>
             </div>
-            <Link href="/settings" className="shrink-0">
-              <Button variant="outline">
-                <Pencil className="mr-1 h-4 w-4" />
-                Edit Profile
+            <div className="flex shrink-0 gap-2">
+              <Link href="/settings">
+                <Button variant="outline">
+                  <Pencil className="mr-1 h-4 w-4" />
+                  Edit Profile
+                </Button>
+              </Link>
+              <Button
+                variant="outline"
+                onClick={() => logout()}
+                className="text-destructive hover:text-destructive"
+              >
+                <LogOut className="mr-1 h-4 w-4" />
+                Sign out
               </Button>
-            </Link>
+            </div>
           </div>
 
           {(doctor?.clinicName || doctor?.registrationNumber) && (
@@ -145,6 +157,9 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Clinic queue QR */}
+      <QueueQRCard />
 
       {/* Professional card */}
       <Card>

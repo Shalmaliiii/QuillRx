@@ -3,10 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { Bell, X } from "lucide-react";
+import { Bell, X, User, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { PageHeading } from "@/contexts/page-header-context";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 function NotificationBell() {
   const [open, setOpen] = useState(false);
@@ -84,7 +91,11 @@ function NotificationBell() {
 }
 
 export function TopBar() {
-  const { doctor } = useAuth();
+  const { doctor, logout } = useAuth();
+
+  const displayName = doctor?.fullName?.startsWith("Dr.")
+    ? doctor.fullName
+    : `Dr. ${doctor?.fullName ?? ""}`.trim();
 
   return (
     <header className="hidden md:flex h-20 items-center gap-4 border-b bg-background/95 px-8 sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -92,17 +103,40 @@ export function TopBar() {
 
       <div className="flex shrink-0 items-center gap-2">
         <NotificationBell />
-        <Link
-          href="/profile"
-          aria-label="Profile"
-          className="rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-        >
-          <Avatar size="lg">
-            <AvatarFallback className="bg-primary/10 font-medium text-primary">
-              {doctor?.fullName?.charAt(0) || "D"}
-            </AvatarFallback>
-          </Avatar>
-        </Link>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            aria-label="Account menu"
+            className="rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            <Avatar size="lg">
+              <AvatarFallback className="bg-primary/10 font-medium text-primary">
+                {doctor?.fullName?.charAt(0) || "D"}
+              </AvatarFallback>
+            </Avatar>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" sideOffset={8} className="w-56">
+            <div className="px-2 py-1.5">
+              <p className="truncate text-sm font-medium">{displayName || "Doctor"}</p>
+              {doctor?.email && (
+                <p className="truncate text-xs text-muted-foreground">{doctor.email}</p>
+              )}
+            </div>
+            <DropdownMenuSeparator className="mx-2" />
+            <DropdownMenuItem render={<Link href="/profile" />} className="py-2">
+              <User className="h-4 w-4" />
+              Profile
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="mx-2" />
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={() => logout()}
+              className="py-2"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );

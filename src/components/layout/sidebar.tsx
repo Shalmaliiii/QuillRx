@@ -7,6 +7,7 @@ import {
   Users,
   FileText,
   Settings,
+  ListChecks,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
@@ -14,6 +15,7 @@ import { PillLogo } from "@/components/layout/pill-logo";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/queue", label: "Queue", icon: ListChecks },
   { href: "/patients", label: "Patients", icon: Users },
   { href: "/prescriptions", label: "Prescriptions", icon: FileText },
   { href: "/settings", label: "Settings", icon: Settings },
