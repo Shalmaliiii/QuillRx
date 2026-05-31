@@ -13,10 +13,10 @@ import {
   Loader2,
   PlusCircle,
   Trash2,
-  ArrowLeft,
   Search,
 } from "lucide-react";
 import { toast } from "sonner";
+import { usePageHeader } from "@/contexts/page-header-context";
 import type { PatientData, MedicineData } from "@/types";
 
 const emptyMedicine: MedicineData = {
@@ -35,6 +35,8 @@ export default function NewPrescriptionPage() {
   const searchParams = useSearchParams();
   const preselectedPatientId = searchParams.get("patientId");
 
+  usePageHeader({ title: "New Prescription", backHref: "/prescriptions" });
+
   const [submitting, setSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<PatientData[]>([]);
@@ -49,13 +51,20 @@ export default function NewPrescriptionPage() {
   const [advice, setAdvice] = useState("");
   const [followUpDate, setFollowUpDate] = useState("");
   const [consultationFee, setConsultationFee] = useState("");
-  const [additionalCharges, setAdditionalCharges] = useState("");
+  const [additionalCharges, setAdditionalCharges] = useState<
+    { label: string; amount: string }[]
+  >([{ label: "", amount: "" }]);
   const [discount, setDiscount] = useState("");
+
+  const additionalTotal = additionalCharges.reduce(
+    (sum, c) => sum + (parseFloat(c.amount) || 0),
+    0
+  );
 
   const total = Math.max(
     0,
     (parseFloat(consultationFee) || 0) +
-      (parseFloat(additionalCharges) || 0) -
+      additionalTotal -
       (parseFloat(discount) || 0)
   );
 
@@ -104,6 +113,26 @@ export default function NewPrescriptionPage() {
     );
   };
 
+  const addCharge = () => {
+    setAdditionalCharges((prev) => [...prev, { label: "", amount: "" }]);
+  };
+
+  const removeCharge = (index: number) => {
+    setAdditionalCharges((prev) =>
+      prev.length === 1 ? [{ label: "", amount: "" }] : prev.filter((_, i) => i !== index)
+    );
+  };
+
+  const updateCharge = (
+    index: number,
+    field: "label" | "amount",
+    value: string
+  ) => {
+    setAdditionalCharges((prev) =>
+      prev.map((c, i) => (i === index ? { ...c, [field]: value } : c))
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPatient) {
@@ -128,7 +157,7 @@ export default function NewPrescriptionPage() {
         advice: advice || undefined,
         followUpDate: followUpDate || undefined,
         consultationFee: parseFloat(consultationFee) || 0,
-        additionalCharges: parseFloat(additionalCharges) || 0,
+        additionalCharges: additionalTotal,
         discount: parseFloat(discount) || 0,
       };
 
@@ -155,13 +184,6 @@ export default function NewPrescriptionPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <h1 className="text-2xl font-bold">New Prescription</h1>
-      </div>
-
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Patient Selection */}
         <Card>
@@ -426,40 +448,79 @@ export default function NewPrescriptionPage() {
           <CardHeader>
             <CardTitle className="text-base">Fees</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid sm:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>Consultation Fee (₹)</Label>
-                <Input
-                  type="number"
-                  placeholder="0"
-                  value={consultationFee}
-                  onChange={(e) => setConsultationFee(e.target.value)}
-                  className="h-11"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Additional Charges (₹)</Label>
-                <Input
-                  type="number"
-                  placeholder="0"
-                  value={additionalCharges}
-                  onChange={(e) => setAdditionalCharges(e.target.value)}
-                  className="h-11"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Discount (₹)</Label>
-                <Input
-                  type="number"
-                  placeholder="0"
-                  value={discount}
-                  onChange={(e) => setDiscount(e.target.value)}
-                  className="h-11"
-                />
-              </div>
+          <CardContent className="space-y-5">
+            <div className="space-y-2 sm:max-w-xs">
+              <Label>Consultation Fee (₹)</Label>
+              <Input
+                type="number"
+                placeholder="0"
+                value={consultationFee}
+                onChange={(e) => setConsultationFee(e.target.value)}
+                className="h-11"
+              />
             </div>
-            <div className="mt-4 flex items-center justify-between p-4 rounded-lg bg-primary/5 border border-primary/20">
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Additional Charges</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addCharge}
+                >
+                  <PlusCircle className="h-4 w-4 mr-1" />
+                  Add charge
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {additionalCharges.map((charge, i) => (
+                  <div key={i} className="flex gap-2">
+                    <Input
+                      placeholder="Description (e.g. Dressing, Injection)"
+                      value={charge.label}
+                      onChange={(e) => updateCharge(i, "label", e.target.value)}
+                      className="h-11 flex-1"
+                    />
+                    <Input
+                      type="number"
+                      placeholder="₹ 0"
+                      value={charge.amount}
+                      onChange={(e) => updateCharge(i, "amount", e.target.value)}
+                      className="h-11 w-28 sm:w-32"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-11 w-11 shrink-0 text-muted-foreground"
+                      onClick={() => removeCharge(i)}
+                      aria-label="Remove charge"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              {additionalTotal > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Additional charges subtotal: ₹{additionalTotal.toFixed(2)}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2 sm:max-w-xs">
+              <Label>Discount (₹)</Label>
+              <Input
+                type="number"
+                placeholder="0"
+                value={discount}
+                onChange={(e) => setDiscount(e.target.value)}
+                className="h-11"
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-4 rounded-lg bg-primary/5 border border-primary/20">
               <span className="font-medium">Total Payable</span>
               <span className="text-2xl font-bold text-primary">₹{total.toFixed(2)}</span>
             </div>

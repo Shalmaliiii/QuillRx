@@ -1,13 +1,11 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
-import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
-  ArrowLeft,
   Download,
   Send,
   Copy,
@@ -17,6 +15,7 @@ import {
   Printer,
 } from "lucide-react";
 import { format } from "date-fns";
+import { usePageHeader } from "@/contexts/page-header-context";
 import { toast } from "sonner";
 import type { PrescriptionData, DoctorProfile, PatientData } from "@/types";
 
@@ -89,6 +88,14 @@ export default function PrescriptionDetailPage({
     window.location.href = `/prescriptions/new?${params.toString()}`;
   };
 
+  usePageHeader({
+    title: "Prescription",
+    description: prescription
+      ? format(new Date(prescription.createdAt), "d MMMM yyyy, h:mm a")
+      : undefined,
+    backHref: "/prescriptions",
+  });
+
   if (loading) {
     return <p className="text-center text-muted-foreground py-12">Loading...</p>;
   }
@@ -99,20 +106,6 @@ export default function PrescriptionDetailPage({
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <Link href="/prescriptions">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold">Prescription</h1>
-          <p className="text-muted-foreground text-sm">
-            {format(new Date(prescription.createdAt), "d MMMM yyyy, h:mm a")}
-          </p>
-        </div>
-      </div>
-
       {/* Action buttons */}
       <div className="flex flex-wrap gap-3">
         <Button onClick={handleWhatsApp} className="gap-2">

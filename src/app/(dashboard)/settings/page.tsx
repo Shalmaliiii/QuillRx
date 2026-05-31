@@ -10,39 +10,62 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Upload, Image as ImageIcon } from "lucide-react";
+import { Loader2, Upload, Image as ImageIcon, Pencil, Lock, X } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
+import { usePageHeader } from "@/contexts/page-header-context";
 import { useTheme } from "next-themes";
 import { doctorProfileSchema, type DoctorProfileInput } from "@/lib/validators";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export default function SettingsPage() {
   const { doctor, refreshProfile } = useAuth();
   const { theme, setTheme } = useTheme();
+
+  usePageHeader({
+    title: "Settings",
+    description: "Manage your profile and clinic details",
+  });
   const [submitting, setSubmitting] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingSignature, setUploadingSignature] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
 
+  const currentValues = (): DoctorProfileInput => ({
+    fullName: doctor?.fullName || "",
+    qualification: doctor?.qualification || "",
+    registrationNumber: doctor?.registrationNumber || "",
+    specialization: doctor?.specialization || "",
+    mobileNumber: doctor?.mobileNumber || "",
+    clinicName: doctor?.clinicName || "",
+    clinicAddress: doctor?.clinicAddress || "",
+    consultationTimings: doctor?.consultationTimings || "",
+    clinicPhone: doctor?.clinicPhone || "",
+  });
+
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<DoctorProfileInput>({
     resolver: zodResolver(doctorProfileSchema),
-    defaultValues: {
-      fullName: doctor?.fullName || "",
-      qualification: doctor?.qualification || "",
-      registrationNumber: doctor?.registrationNumber || "",
-      specialization: doctor?.specialization || "",
-      mobileNumber: doctor?.mobileNumber || "",
-      clinicName: doctor?.clinicName || "",
-      clinicAddress: doctor?.clinicAddress || "",
-      consultationTimings: doctor?.consultationTimings || "",
-      clinicPhone: doctor?.clinicPhone || "",
-    },
+    defaultValues: currentValues(),
   });
+
+  const fieldClass = cn(
+    "h-11 transition-colors",
+    editing
+      ? "border-primary/50 bg-background ring-1 ring-primary/10"
+      : "border-transparent bg-muted/60 text-foreground"
+  );
+
+  const handleCancel = () => {
+    reset(currentValues());
+    setEditing(false);
+  };
 
   const onSubmit = async (data: DoctorProfileInput) => {
     setSubmitting(true);
@@ -60,6 +83,7 @@ export default function SettingsPage() {
 
       await refreshProfile();
       toast.success("Profile updated successfully");
+      setEditing(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Update failed");
     } finally {
@@ -92,42 +116,61 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Settings</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Manage your profile and clinic details
-        </p>
-      </div>
-
       {/* Profile */}
       <Card>
         <CardHeader>
-          <CardTitle>Doctor Profile</CardTitle>
-          <CardDescription>Update your professional details</CardDescription>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <CardTitle>Doctor Profile</CardTitle>
+              <CardDescription>
+                {editing
+                  ? "Editing — make your changes and save"
+                  : "Your professional details"}
+              </CardDescription>
+            </div>
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+                editing
+                  ? "bg-primary/10 text-primary"
+                  : "bg-muted text-muted-foreground"
+              )}
+            >
+              {editing ? (
+                <>
+                  <Pencil className="h-3 w-3" /> Editing
+                </>
+              ) : (
+                <>
+                  <Lock className="h-3 w-3" /> Locked
+                </>
+              )}
+            </span>
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Full Name</Label>
-                <Input {...register("fullName")} className="h-11" />
+                <Input {...register("fullName")} readOnly={!editing} className={fieldClass} />
                 {errors.fullName && <p className="text-sm text-destructive">{errors.fullName.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label>Qualification</Label>
-                <Input {...register("qualification")} className="h-11" />
+                <Input {...register("qualification")} readOnly={!editing} className={fieldClass} />
               </div>
               <div className="space-y-2">
                 <Label>Registration Number</Label>
-                <Input {...register("registrationNumber")} className="h-11" />
+                <Input {...register("registrationNumber")} readOnly={!editing} className={fieldClass} />
               </div>
               <div className="space-y-2">
                 <Label>Specialization</Label>
-                <Input {...register("specialization")} className="h-11" />
+                <Input {...register("specialization")} readOnly={!editing} className={fieldClass} />
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>Mobile Number</Label>
-                <Input {...register("mobileNumber")} className="h-11" />
+                <Input {...register("mobileNumber")} readOnly={!editing} className={fieldClass} />
               </div>
             </div>
 
@@ -136,26 +179,52 @@ export default function SettingsPage() {
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Clinic Name</Label>
-                <Input {...register("clinicName")} className="h-11" />
+                <Input {...register("clinicName")} readOnly={!editing} className={fieldClass} />
               </div>
               <div className="space-y-2">
                 <Label>Clinic Phone</Label>
-                <Input {...register("clinicPhone")} className="h-11" />
+                <Input {...register("clinicPhone")} readOnly={!editing} className={fieldClass} />
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>Clinic Address</Label>
-                <Input {...register("clinicAddress")} className="h-11" />
+                <Input {...register("clinicAddress")} readOnly={!editing} className={fieldClass} />
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>Consultation Timings</Label>
-                <Input {...register("consultationTimings")} className="h-11" />
+                <Input {...register("consultationTimings")} readOnly={!editing} className={fieldClass} />
               </div>
             </div>
 
-            <Button type="submit" className="w-full h-11" disabled={submitting}>
-              {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Save Changes
-            </Button>
+            <div className="flex items-center justify-end gap-3 pt-2">
+              {editing ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-11"
+                    onClick={handleCancel}
+                    disabled={submitting}
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Cancel
+                  </Button>
+                  <Button type="submit" className="h-11" disabled={submitting}>
+                    {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Save Changes
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11"
+                  onClick={() => setEditing(true)}
+                >
+                  <Pencil className="h-4 w-4 mr-1" />
+                  Edit Profile
+                </Button>
+              )}
+            </div>
           </form>
         </CardContent>
       </Card>
