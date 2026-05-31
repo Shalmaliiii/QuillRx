@@ -7,17 +7,15 @@ import {
   Users,
   FileText,
   Settings,
-  PlusCircle,
-  Pill,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
+import { PillLogo } from "@/components/layout/pill-logo";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/patients", label: "Patients", icon: Users },
   { href: "/prescriptions", label: "Prescriptions", icon: FileText },
-  { href: "/prescriptions/new", label: "New Prescription", icon: PlusCircle },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -29,7 +27,7 @@ export function Sidebar() {
     <aside className="hidden md:flex w-64 flex-col border-r bg-card h-screen sticky top-0">
       <div className="h-20 px-6 flex flex-col justify-center border-b">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <Pill className="h-7 w-7 text-primary" />
+          <PillLogo className="h-7 w-7" />
           <span className="text-xl font-bold tracking-tight">QuillRx</span>
         </Link>
         {doctor?.clinicName && (

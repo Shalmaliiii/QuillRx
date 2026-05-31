@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 
 export interface SeriesPoint {
   date: string;
+  label?: string;
   count: number;
   revenue: number;
 }

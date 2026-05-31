@@ -14,6 +14,7 @@ import {
   IndianRupee,
   CalendarDays,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth-context";
 import { usePageHeader } from "@/contexts/page-header-context";
 import { ClinicBanner } from "@/components/layout/clinic-banner";
@@ -37,6 +38,8 @@ interface PrescriptionPreview {
   };
 }
 
+type Range = "daily" | "weekly" | "monthly";
+
 interface DashboardData {
   todayPatients: number;
   totalConsultations: number;
@@ -45,10 +48,18 @@ interface DashboardData {
   thisWeekConsultations: number;
   totalRevenue: number;
   avgConsultationFee: number;
+  range: Range;
+  rangeLabel: string;
   series: SeriesPoint[];
   upcomingFollowUps: PrescriptionPreview[];
   recentPrescriptions: PrescriptionPreview[];
 }
+
+const RANGE_OPTIONS: { value: Range; label: string }[] = [
+  { value: "daily", label: "Daily" },
+  { value: "weekly", label: "Weekly" },
+  { value: "monthly", label: "Monthly" },
+];
 
 const inr = (value: number) =>
   `₹${Math.round(value).toLocaleString("en-IN")}`;
@@ -57,6 +68,8 @@ export default function DashboardPage() {
   const { doctor } = useAuth();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [range, setRange] = useState<Range>("daily");
+  const [seriesLoading, setSeriesLoading] = useState(false);
 
   const greetingName = doctor?.fullName?.startsWith("Dr.")
     ? doctor.fullName.split(" ").slice(0, 2).join(" ")
@@ -68,12 +81,24 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
-    fetch("/api/dashboard")
+    let active = true;
+    setSeriesLoading(true);
+    fetch(`/api/dashboard?range=${range}`)
       .then((res) => res.json())
-      .then(setData)
+      .then((d) => {
+        if (active) setData(d);
+      })
       .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+          setSeriesLoading(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [range]);
 
   const dash = (n: number | undefined) => (loading ? "—" : n ?? 0);
 
@@ -120,61 +145,94 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Consultations</CardTitle>
-              <span className="text-xs text-muted-foreground">Last 30 days</span>
-            </div>
-            <p className="text-2xl font-bold">
-              {loading
-                ? "—"
-                : (data?.series.reduce((s, d) => s + d.count, 0) ?? 0)}
-            </p>
-          </CardHeader>
-          <CardContent>
-            {data && data.series.length > 0 ? (
-              <TrendAreaChart data={data.series} valueKey="count" className="text-primary" />
-            ) : (
-              <div className="h-32" />
-            )}
-          </CardContent>
-        </Card>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold tracking-tight">Trends</h2>
+          <div className="inline-flex items-center rounded-lg border bg-muted/40 p-0.5">
+            {RANGE_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setRange(opt.value)}
+                aria-pressed={range === opt.value}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+                  range === opt.value
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Revenue</CardTitle>
-              <span className="text-xs text-muted-foreground">Last 30 days</span>
-            </div>
-            <div className="flex items-baseline gap-2">
+        <div
+          className={cn(
+            "grid gap-4 transition-opacity lg:grid-cols-2",
+            seriesLoading && "opacity-60"
+          )}
+        >
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">Consultations</CardTitle>
+                <span className="text-xs text-muted-foreground">
+                  {data?.rangeLabel ?? ""}
+                </span>
+              </div>
               <p className="text-2xl font-bold">
                 {loading
                   ? "—"
-                  : inr(data?.series.reduce((s, d) => s + d.revenue, 0) ?? 0)}
+                  : (data?.series.reduce((s, d) => s + d.count, 0) ?? 0)}
               </p>
-              {!loading && (
-                <span className="text-xs text-muted-foreground">
-                  avg fee {inr(data?.avgConsultationFee ?? 0)}
-                </span>
+            </CardHeader>
+            <CardContent>
+              {data && data.series.length > 0 ? (
+                <TrendAreaChart data={data.series} valueKey="count" className="text-primary" />
+              ) : (
+                <div className="h-32" />
               )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            {data && data.series.length > 0 ? (
-              <TrendBarChart
-                data={data.series}
-                className="text-chart-4"
-                formatTooltip={(d) =>
-                  `${format(new Date(d.date), "d MMM")}: ${inr(d.revenue)}`
-                }
-              />
-            ) : (
-              <div className="h-32" />
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">Revenue</CardTitle>
+                <span className="text-xs text-muted-foreground">
+                  {data?.rangeLabel ?? ""}
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <p className="text-2xl font-bold">
+                  {loading
+                    ? "—"
+                    : inr(data?.series.reduce((s, d) => s + d.revenue, 0) ?? 0)}
+                </p>
+                {!loading && (
+                  <span className="text-xs text-muted-foreground">
+                    avg fee {inr(data?.avgConsultationFee ?? 0)}
+                  </span>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {data && data.series.length > 0 ? (
+                <TrendBarChart
+                  data={data.series}
+                  className="text-chart-4"
+                  formatTooltip={(d) =>
+                    `${d.label ?? format(new Date(d.date), "d MMM")}: ${inr(d.revenue)}`
+                  }
+                />
+              ) : (
+                <div className="h-32" />
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
