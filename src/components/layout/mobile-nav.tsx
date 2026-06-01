@@ -10,19 +10,20 @@ import {
   PlusCircle,
   LogOut,
   Menu,
-  Pill,
+  ListChecks,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { PillLogo } from "@/components/layout/pill-logo";
 import { useState } from "react";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/queue", label: "Queue", icon: ListChecks },
   { href: "/patients", label: "Patients", icon: Users },
   { href: "/prescriptions", label: "Prescriptions", icon: FileText },
-  { href: "/prescriptions/new", label: "New Prescription", icon: PlusCircle },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -43,7 +44,7 @@ export function MobileNav() {
           <SheetContent side="left" className="w-72 p-0">
             <div className="p-6 border-b">
               <Link href="/dashboard" className="flex items-center gap-2" onClick={() => setOpen(false)}>
-                <Pill className="h-6 w-6 text-primary" />
+                <PillLogo className="h-6 w-6" />
                 <span className="text-lg font-bold">QuillRx</span>
               </Link>
             </div>
@@ -91,7 +92,7 @@ export function MobileNav() {
         </Sheet>
 
         <Link href="/dashboard" className="flex items-center gap-2">
-          <Pill className="h-5 w-5 text-primary" />
+          <PillLogo className="h-5 w-5" />
           <span className="font-bold">QuillRx</span>
         </Link>
 

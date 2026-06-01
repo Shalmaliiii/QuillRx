@@ -26,6 +26,40 @@ model Doctor {
   updatedAt          DateTime       @updatedAt
   patients           Patient[]
   prescriptions      Prescription[]
+  queueEntries       QueueEntry[]
+}
+
+enum QueueStatus {
+  WAITING
+  IN_PROGRESS
+  DONE
+  NO_SHOW
+  CANCELLED
+}
+
+model QueueEntry {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  doctorId    String      @db.ObjectId
+  patientId   String?     @db.ObjectId
+  name        String
+  age         Int?
+  gender      String?
+  phone       String?
+  reason      String
+  duration    String?
+  severity    String?
+  notes       String?
+  tokenNumber Int
+  status      QueueStatus @default(WAITING)
+  source      String      @default("qr")
+  calledAt    DateTime?
+  completedAt DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  doctor      Doctor      @relation(fields: [doctorId], references: [id])
+
+  @@index([doctorId, status])
+  @@index([doctorId, createdAt])
 }
 
 model Patient {

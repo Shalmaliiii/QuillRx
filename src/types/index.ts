@@ -70,6 +70,34 @@ export interface PrescriptionData {
   doctor?: DoctorProfile;
 }
 
+export type QueueStatus =
+  | "WAITING"
+  | "IN_PROGRESS"
+  | "DONE"
+  | "NO_SHOW"
+  | "CANCELLED";
+
+export interface QueueEntryData {
+  id: string;
+  doctorId: string;
+  patientId: string | null;
+  name: string;
+  age: number | null;
+  gender: string | null;
+  phone: string | null;
+  reason: string;
+  duration: string | null;
+  severity: string | null;
+  notes: string | null;
+  tokenNumber: number;
+  status: QueueStatus;
+  source: string;
+  calledAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface DashboardStats {
   todayPatients: number;
   totalConsultations: number;
