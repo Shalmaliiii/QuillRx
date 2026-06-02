@@ -17,9 +17,9 @@ export async function GET() {
     });
 
     const counts = {
-      waiting: entries.filter((e) => e.status === "WAITING").length,
-      inProgress: entries.filter((e) => e.status === "IN_PROGRESS").length,
-      done: entries.filter((e) => e.status === "DONE").length,
+      waiting: entries.filter((e: any) => e.status === "WAITING").length,
+      inProgress: entries.filter((e: any) => e.status === "IN_PROGRESS").length,
+      done: entries.filter((e: any) => e.status === "DONE").length,
       total: entries.length,
     };
 
