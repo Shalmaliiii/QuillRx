@@ -5,7 +5,8 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { FileText, Search } from "lucide-react";
 import { usePageHeader } from "@/contexts/page-header-context";
 import { format } from "date-fns";
 
@@ -29,54 +30,88 @@ export default function PrescriptionsPage() {
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
   useEffect(() => {
     let cancelled = false;
     const controller = new AbortController();
 
-    fetch(`/api/prescriptions?page=${page}&limit=20`, {
-      signal: controller.signal,
-    })
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: "20",
+    });
+    if (debouncedSearch) params.set("q", debouncedSearch);
+
+    setLoading(true);
+    fetch(`/api/prescriptions?${params}`, { signal: controller.signal })
       .then((res) => res.json())
       .then((data) => {
         if (!cancelled) {
           setPrescriptions(data.prescriptions || []);
           setTotal(data.total || 0);
-          setLoading(false);
         }
       })
       .catch((err) => {
         if (!cancelled && err.name !== "AbortError") {
           console.error(err);
-          setLoading(false);
         }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
 
     return () => {
       cancelled = true;
       controller.abort();
     };
-  }, [page]);
+  }, [page, debouncedSearch]);
 
   const totalPages = Math.ceil(total / 20);
 
   usePageHeader({
     title: "Prescriptions",
-    description: `${total} total prescription${total !== 1 ? "s" : ""}`,
+    description: debouncedSearch
+      ? `${total} result${total !== 1 ? "s" : ""} for "${debouncedSearch}"`
+      : `${total} total prescription${total !== 1 ? "s" : ""}`,
   });
 
   return (
     <div className="space-y-6">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Search by patient name or phone..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="h-11 pl-10"
+        />
+      </div>
+
       {loading ? (
         <p className="text-center text-muted-foreground py-12">Loading...</p>
       ) : prescriptions.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <FileText className="h-12 w-12 mx-auto text-muted-foreground/40 mb-4" />
-            <p className="text-muted-foreground">No prescriptions yet</p>
-            <Link href="/prescriptions/new" className="mt-2 inline-block">
-              <Button variant="link">Create your first prescription</Button>
-            </Link>
+            <p className="text-muted-foreground">
+              {debouncedSearch
+                ? "No prescriptions match your search"
+                : "No prescriptions yet"}
+            </p>
+            {!debouncedSearch && (
+              <Link href="/prescriptions/new" className="mt-2 inline-block">
+                <Button variant="link">Create your first prescription</Button>
+              </Link>
+            )}
           </CardContent>
         </Card>
       ) : (

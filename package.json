@@ -10,7 +10,9 @@
     "db:up": "docker compose -f docker-compose.dev.yml up -d",
     "db:down": "docker compose -f docker-compose.dev.yml down",
     "db:push": "prisma db push",
-    "db:seed-demo": "node scripts/seed-demo.mjs"
+    "db:seed-demo": "node scripts/seed-demo.mjs",
+    "db:seed-medicines": "node scripts/seed-medicines.mjs",
+    "db:import-medicines": "node scripts/import-medicines.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",

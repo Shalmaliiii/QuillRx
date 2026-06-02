@@ -152,3 +152,201 @@
     margin: 0;
   }
 }
+
+/* Queue stage animations */
+@keyframes queue-idle-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes queue-walk-through {
+  0% {
+    transform: translateX(0) translateY(0) scale(var(--slot-scale, 1));
+    opacity: 1;
+  }
+  70% {
+    transform: translateX(var(--walk-x, 90px)) translateY(-6px) scale(calc(var(--slot-scale, 1) * 1.05));
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateX(var(--walk-x, 110px)) translateY(2px) scale(0.35);
+    opacity: 0;
+  }
+}
+
+@keyframes queue-shuffle-forward {
+  from {
+    transform: translateX(-76px) translateY(8px) scale(0.88);
+    opacity: 0.7;
+  }
+  to {
+    transform: translateX(0) translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes queue-exit-right {
+  0% {
+    transform: translateX(-90px) scale(1);
+    opacity: 1;
+  }
+  45% {
+    transform: translateX(10px) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(120px) scale(0.75);
+    opacity: 0;
+  }
+}
+
+@keyframes queue-token-idle {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes queue-token-walk {
+  0% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+  65% {
+    transform: translateX(var(--walk-x, 88px)) translateY(-8px) scale(1.05);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(var(--walk-x, 100px)) translateY(4px) scale(0.5);
+    opacity: 0;
+  }
+}
+
+@keyframes queue-token-promote {
+  0% {
+    transform: translateX(-48px) scale(0.85);
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes queue-file-promote {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(72px, -48px) rotate(-8deg) scale(0.6);
+    opacity: 0;
+  }
+}
+
+@keyframes queue-file-pop-in {
+  0% {
+    transform: translateY(-24px) scale(0.88) rotate(-4deg);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(4px) scale(1.02) rotate(1deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes door-aura-green {
+  0%,
+  100% {
+    box-shadow: 0 0 16px color-mix(in oklch, var(--chart-2) 40%, transparent),
+      0 0 32px color-mix(in oklch, var(--chart-2) 15%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 28px color-mix(in oklch, var(--chart-2) 65%, transparent),
+      0 0 48px color-mix(in oklch, var(--chart-2) 25%, transparent);
+  }
+}
+
+@keyframes door-aura-red {
+  0%,
+  100% {
+    box-shadow: 0 0 16px color-mix(in oklch, var(--destructive) 45%, transparent),
+      0 0 28px color-mix(in oklch, var(--destructive) 18%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 30px color-mix(in oklch, var(--destructive) 70%, transparent),
+      0 0 44px color-mix(in oklch, var(--destructive) 28%, transparent);
+  }
+}
+
+@keyframes room-glow-red {
+  0%,
+  100% {
+    opacity: 0.75;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-queue-idle {
+  animation: queue-idle-bob 2.4s ease-in-out infinite;
+}
+
+.animate-queue-walk {
+  animation: queue-walk-through 1.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  z-index: 30 !important;
+}
+
+.animate-queue-shuffle-forward {
+  animation: queue-shuffle-forward 0.6s cubic-bezier(0.34, 1.4, 0.64, 1) forwards;
+}
+
+.animate-door-aura-green {
+  animation: door-aura-green 2.2s ease-in-out infinite;
+}
+
+.animate-door-aura-red {
+  animation: door-aura-red 2s ease-in-out infinite;
+}
+
+.animate-queue-exit-right {
+  animation: queue-exit-right 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-queue-token-idle {
+  animation: queue-token-idle 2.6s ease-in-out infinite;
+}
+
+.animate-queue-token-walk {
+  animation: queue-token-walk 1.1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  z-index: 30;
+}
+
+.animate-queue-token-promote {
+  animation: queue-token-promote 0.55s cubic-bezier(0.34, 1.3, 0.64, 1) forwards;
+}
+
+.animate-queue-file-promote {
+  animation: queue-file-promote 0.55s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-queue-file-pop-in {
+  animation: queue-file-pop-in 0.65s cubic-bezier(0.34, 1.4, 0.64, 1) forwards;
+}
+
+.animate-room-glow-red {
+  animation: room-glow-red 1.8s ease-in-out infinite;
+}

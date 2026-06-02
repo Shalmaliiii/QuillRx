@@ -125,3 +125,19 @@ model Prescription {
   @@index([doctorId])
   @@index([patientId])
 }
+
+model MedicineCatalog {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  genericName String
+  brandName   String?
+  strength    String?
+  form        String?
+  rxCui       String?
+  source      String   @default("local")
+  searchText  String
+  isEssential Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([searchText])
+  @@index([genericName])
+}
