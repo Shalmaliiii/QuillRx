@@ -52,7 +52,7 @@ export async function averageConsultMinutes(
 
   if (completed.length === 0) return DEFAULT_CONSULT_MINUTES;
 
-  const total = completed.reduce((sum, entry) => {
+  const total = completed.reduce((sum: number, entry: any) => {
     const mins =
       (entry.completedAt!.getTime() - entry.calledAt!.getTime()) / 60_000;
     return sum + Math.max(mins, 3);
