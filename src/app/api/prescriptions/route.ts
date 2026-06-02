@@ -14,9 +14,29 @@ export async function GET(request: Request) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
     const patientId = searchParams.get("patientId");
+    const q = searchParams.get("q")?.trim().toLowerCase() ?? "";
 
     const where: Record<string, unknown> = { doctorId };
     if (patientId) where.patientId = patientId;
+
+    if (q) {
+      const patients = await prisma.patient.findMany({
+        where: { doctorId },
+        select: { id: true, fullName: true, phone: true },
+      });
+      const matchingIds = patients
+        .filter(
+          (p) =>
+            p.fullName.toLowerCase().includes(q) || p.phone.includes(q)
+        )
+        .map((p) => p.id);
+
+      if (matchingIds.length === 0) {
+        return NextResponse.json({ prescriptions: [], total: 0, page, limit });
+      }
+
+      where.patientId = { in: matchingIds };
+    }
 
     const [prescriptions, total] = await Promise.all([
       prisma.prescription.findMany({

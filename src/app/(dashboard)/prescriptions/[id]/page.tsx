@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,7 @@ import {
 import { format } from "date-fns";
 import { usePageHeader } from "@/contexts/page-header-context";
 import { toast } from "sonner";
+import { ConsultationDoneButton } from "@/components/queue/consultation-done-button";
 import type { PrescriptionData, DoctorProfile, PatientData } from "@/types";
 
 interface FullPrescription extends PrescriptionData {
@@ -30,6 +32,8 @@ export default function PrescriptionDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const searchParams = useSearchParams();
+  const queueEntryId = searchParams.get("queueEntryId");
   const [prescription, setPrescription] = useState<FullPrescription | null>(null);
   const [loading, setLoading] = useState(true);
   const [showQR, setShowQR] = useState(false);
@@ -347,6 +351,12 @@ export default function PrescriptionDetailPage({
           </Card>
         )}
       </div>
+
+      {queueEntryId && (
+        <div className="flex justify-end border-t pt-6">
+          <ConsultationDoneButton queueEntryId={queueEntryId} />
+        </div>
+      )}
     </div>
   );
 }

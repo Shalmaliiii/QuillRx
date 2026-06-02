@@ -45,6 +45,7 @@ import {
   buildVisitSymptoms,
 } from "@/lib/queue-options";
 import type { QueueEntryData } from "@/types";
+import { ConsultationDoneButton } from "@/components/queue/consultation-done-button";
 
 interface Prescription {
   id: string;
@@ -115,12 +116,16 @@ export default function PatientDetailPage({
       .catch(() => setVisit(null));
   }, [queueEntryId]);
 
+  const fromQueue = Boolean(queueEntryId);
+
   usePageHeader({
-    title: patient?.fullName ?? "Patient",
-    description: patient
-      ? `${patient.age}y / ${patient.gender} · ${patient.phone}`
-      : undefined,
-    backHref: "/patients",
+    title: fromQueue ? "Consultation" : patient?.fullName ?? "Patient",
+    description: fromQueue
+      ? undefined
+      : patient
+        ? `${patient.age}y / ${patient.gender} · ${patient.phone}`
+        : undefined,
+    backHref: fromQueue ? "/queue" : "/patients",
   });
 
   const prescriptions = patient?.prescriptions ?? [];
@@ -160,14 +165,27 @@ export default function PatientDetailPage({
     ? format(new Date(lastVisit.followUpDate), "d MMM yyyy")
     : "None scheduled";
 
-  const newRxHref = visit
-    ? `/prescriptions/new?patientId=${patient.id}&symptoms=${encodeURIComponent(
+  const newRxHref = visit && queueEntryId
+    ? `/prescriptions/new?patientId=${patient.id}&queueEntryId=${queueEntryId}&symptoms=${encodeURIComponent(
         buildVisitSymptoms(visit)
       )}`
-    : `/prescriptions/new?patientId=${patient.id}`;
+    : visit
+      ? `/prescriptions/new?patientId=${patient.id}&symptoms=${encodeURIComponent(
+          buildVisitSymptoms(visit)
+        )}`
+      : `/prescriptions/new?patientId=${patient.id}`;
 
   return (
     <div className="space-y-5 max-w-4xl mx-auto">
+      {fromQueue && (
+        <div className="rounded-xl border bg-card px-5 py-4 shadow-sm">
+          <h1 className="text-2xl font-bold tracking-tight">{patient.fullName}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {patient.age}y / {patient.gender} · {patient.phone}
+          </p>
+        </div>
+      )}
+
       {/* Current visit banner */}
       {visit && (
         <Card className="border-primary/40 bg-primary/5">
@@ -382,6 +400,12 @@ export default function PatientDetailPage({
           )}
         </CardContent>
       </Card>
+
+      {fromQueue && queueEntryId && (
+        <div className="flex justify-end border-t pt-6">
+          <ConsultationDoneButton queueEntryId={queueEntryId} />
+        </div>
+      )}
     </div>
   );
 }

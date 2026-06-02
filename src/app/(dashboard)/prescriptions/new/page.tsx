@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { usePageHeader } from "@/contexts/page-header-context";
+import { MedicineSearchInput } from "@/components/medicines/medicine-search-input";
 import type { PatientData, MedicineData } from "@/types";
 
 const emptyMedicine: MedicineData = {
@@ -35,6 +36,7 @@ export default function NewPrescriptionPage() {
   const searchParams = useSearchParams();
   const preselectedPatientId = searchParams.get("patientId");
   const prefilledSymptoms = searchParams.get("symptoms");
+  const queueEntryId = searchParams.get("queueEntryId");
 
   usePageHeader({ title: "New Prescription", backHref: "/prescriptions" });
 
@@ -181,7 +183,10 @@ export default function NewPrescriptionPage() {
 
       const prescription = await res.json();
       toast.success("Prescription created!");
-      router.push(`/prescriptions/${prescription.id}`);
+      const next = queueEntryId
+        ? `/prescriptions/${prescription.id}?queueEntryId=${queueEntryId}`
+        : `/prescriptions/${prescription.id}`;
+      router.push(next);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to create prescription");
     } finally {
@@ -341,10 +346,11 @@ export default function NewPrescriptionPage() {
                 <div className="grid sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs">Medicine Name *</Label>
-                    <Input
-                      placeholder="e.g. Paracetamol"
+                    <MedicineSearchInput
                       value={med.name}
-                      onChange={(e) => updateMedicine(index, "name", e.target.value)}
+                      strength={med.strength}
+                      onNameChange={(name) => updateMedicine(index, "name", name)}
+                      onStrengthChange={(s) => updateMedicine(index, "strength", s)}
                       className="h-10"
                     />
                   </div>
