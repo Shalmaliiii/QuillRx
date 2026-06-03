@@ -11,6 +11,16 @@ import { searchRxNorm } from "@/lib/rxnorm";
 const LOCAL_LIMIT = 12;
 const RXNORM_LIMIT = 8;
 
+type MedicineSearchRow = Required<
+  Pick<MedicineCatalogEntry, "id" | "genericName" | "source" | "isEssential">
+> &
+  Pick<
+    MedicineCatalogEntry,
+    "brandName" | "strength" | "form" | "rxCui"
+  > & {
+    displayName: string;
+  };
+
 export async function GET(request: Request) {
   try {
     const doctorId = await getAuthDoctorId();
@@ -32,7 +42,7 @@ export async function GET(request: Request) {
       take: LOCAL_LIMIT,
     });
 
-    const merged = local.map((row) => ({
+    const merged: MedicineSearchRow[] = local.map((row) => ({
       id: row.id,
       genericName: row.genericName,
       brandName: row.brandName,
@@ -47,7 +57,7 @@ export async function GET(request: Request) {
     if (merged.length < LOCAL_LIMIT) {
       const rxHits = await searchRxNorm(q, RXNORM_LIMIT);
       const existing = new Set(
-        merged.map((m) => m.genericName.toLowerCase())
+        merged.map((medicine) => medicine.genericName.toLowerCase())
       );
 
       for (const hit of rxHits) {
