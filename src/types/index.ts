@@ -98,6 +98,25 @@ export interface QueueEntryData {
   updatedAt: string;
 }
 
+export interface PrescriptionTemplateData {
+  id: string;
+  doctorId: string;
+  name: string;
+  description: string | null;
+  symptoms: string | null;
+  diagnosis: string | null;
+  vitals: VitalData | null;
+  medicines: MedicineData[];
+  labTests: string | null;
+  advice: string | null;
+  followUpDays: number | null;
+  consultationFee: number | null;
+  additionalCharges: number | null;
+  discount: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface DashboardStats {
   todayPatients: number;
   totalConsultations: number;
