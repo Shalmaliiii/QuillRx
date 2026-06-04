@@ -8,22 +8,26 @@ import {
   FileText,
   Settings,
   ListChecks,
+  ClipboardList,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
 import { PillLogo } from "@/components/layout/pill-logo";
+import { useQueueNotifications } from "@/contexts/queue-notifications-context";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/queue", label: "Queue", icon: ListChecks },
   { href: "/patients", label: "Patients", icon: Users },
   { href: "/prescriptions", label: "Prescriptions", icon: FileText },
+  { href: "/templates", label: "Templates", icon: ClipboardList },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const { doctor } = useAuth();
+  const { counts } = useQueueNotifications();
 
   return (
     <aside className="hidden md:flex w-64 flex-col border-r bg-card h-screen sticky top-0">
@@ -54,7 +58,19 @@ export function Sidebar() {
               )}
             >
               <item.icon className="h-4 w-4" />
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {item.href === "/queue" && counts.waiting > 0 && (
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums",
+                    isActive
+                      ? "bg-primary-foreground/20 text-primary-foreground"
+                      : "bg-primary/15 text-primary"
+                  )}
+                >
+                  {counts.waiting}
+                </span>
+              )}
             </Link>
           );
         })}

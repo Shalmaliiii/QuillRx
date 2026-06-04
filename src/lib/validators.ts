@@ -92,3 +92,27 @@ export type LoginInput = z.infer<typeof loginSchema>;
 export type PatientInput = z.infer<typeof patientSchema>;
 export type PrescriptionInput = z.infer<typeof prescriptionSchema>;
 export type DoctorProfileInput = z.infer<typeof doctorProfileSchema>;
+
+export const prescriptionTemplateSchema = z.object({
+  name: z.string().min(2, "Template name is required"),
+  description: z.string().optional(),
+  symptoms: z.string().optional(),
+  diagnosis: z.string().optional(),
+  vitals: z
+    .object({
+      bp: z.string().optional(),
+      temperature: z.string().optional(),
+      weight: z.string().optional(),
+      pulse: z.string().optional(),
+    })
+    .optional(),
+  medicines: z.array(medicineSchema).default([]),
+  labTests: z.string().optional(),
+  advice: z.string().optional(),
+  followUpDays: z.coerce.number().min(0).optional(),
+  consultationFee: z.coerce.number().min(0).default(0),
+  additionalCharges: z.coerce.number().min(0).default(0),
+  discount: z.coerce.number().min(0).default(0),
+});
+
+export type PrescriptionTemplateInput = z.infer<typeof prescriptionTemplateSchema>;

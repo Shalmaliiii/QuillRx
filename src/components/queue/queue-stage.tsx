@@ -9,16 +9,14 @@ import type { QueueEntryData } from "@/types";
 
 /** Extra offset so the front doll clears the in-room name board when occupied. */
 const OCCUPIED_LANE_OFFSET = 96;
+const DOLL_SPACING = 72;
+const DOOR_LINE = 118;
 
 function queueSlot(index: number, occupied = false) {
-  const depth = index;
   const laneOffset = occupied ? OCCUPIED_LANE_OFFSET : 0;
   return {
-    right: 118 + depth * 76 + laneOffset,
-    scale: Math.max(0.62, 1 - depth * 0.11),
-    lift: depth * 10,
-    opacity: Math.max(0.72, 1 - depth * 0.1),
-    zIndex: 30 - depth,
+    right: DOOR_LINE + index * DOLL_SPACING + laneOffset,
+    zIndex: 30 - index,
   };
 }
 
@@ -104,42 +102,25 @@ export function QueueStage({
 
   return (
     <div className="space-y-4">
-      <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-b from-muted/50 via-card to-muted/70 shadow-lg dark:from-card dark:via-card dark:to-muted/40">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_85%_55%,color-mix(in_oklch,var(--primary)_22%,transparent),transparent_55%)] dark:bg-[radial-gradient(ellipse_at_85%_55%,color-mix(in_oklch,var(--primary)_14%,transparent),transparent_50%)]" />
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-b from-white via-slate-50/40 to-white shadow-sm dark:border-border dark:from-card dark:via-card dark:to-muted/40 dark:shadow-lg">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_85%_55%,color-mix(in_oklch,var(--primary)_6%,transparent),transparent_55%)] dark:bg-[radial-gradient(ellipse_at_85%_55%,color-mix(in_oklch,var(--primary)_14%,transparent),transparent_50%)]" />
 
         <div className="relative mx-auto h-[360px] max-w-3xl px-4 pt-5 sm:px-8">
-          <p className="relative z-10 text-xs font-semibold uppercase tracking-widest text-foreground/65 dark:text-muted-foreground">
+          <p className="relative z-10 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-muted-foreground">
             Waiting room · {waiting.length} in line
           </p>
 
-          <div className="pointer-events-none absolute inset-x-6 bottom-12 h-32">
-            <div
-              className="absolute inset-x-0 bottom-0 h-24 origin-bottom rounded-t-[50%] border-t border-primary/45 bg-gradient-to-t from-primary/30 via-primary/12 to-transparent dark:border-primary/25 dark:from-primary/15 dark:via-transparent"
-              style={{ transform: "perspective(500px) rotateX(58deg)" }}
-            />
-            {[0, 1, 2, 3, 4].map((i) => (
-              <div
-                key={i}
-                className="absolute bottom-6 h-px bg-primary/40 dark:bg-primary/20"
-                style={{
-                  right: `${80 + i * 70}px`,
-                  left: `${40 + i * 28}px`,
-                  transform: `translateY(${-i * 6}px)`,
-                  opacity: 1 - i * 0.12,
-                }}
-              />
-            ))}
-            <p className="absolute bottom-1 left-8 text-[9px] font-semibold uppercase tracking-wider text-foreground/50 dark:text-muted-foreground/60">
-              Back of line
-            </p>
-            <p
-              className={cn(
-                "absolute bottom-1 text-[9px] font-semibold uppercase tracking-wider text-primary transition-[right] duration-500 dark:text-primary/70",
-                occupied ? "right-52" : "right-28"
-              )}
-            >
-              Next →
-            </p>
+          <div className="pointer-events-none absolute inset-x-4 bottom-12 h-32 sm:inset-x-6">
+            <div className="absolute inset-x-2 bottom-8 h-px bg-slate-300/70 dark:bg-primary/25 sm:inset-x-8" />
+            <div className="absolute inset-x-2 bottom-0 flex items-center justify-between gap-3 sm:inset-x-8">
+              <p className="shrink-0 text-[8px] font-semibold uppercase tracking-wide text-slate-400 dark:text-muted-foreground/60 sm:text-[9px] sm:tracking-wider">
+                <span className="sm:hidden">Back</span>
+                <span className="hidden sm:inline">Back of line</span>
+              </p>
+              <p className="shrink-0 text-[8px] font-semibold uppercase tracking-wide text-sky-700 sm:text-[9px] sm:tracking-wider dark:text-primary/70">
+                Next →
+              </p>
+            </div>
           </div>
 
           <div className="absolute inset-x-4 bottom-[4.5rem] top-16 sm:inset-x-8">
@@ -164,7 +145,7 @@ export function QueueStage({
                     isWalking={isWalking}
                     shuffling={shuffling && index > 0}
                     idleDelay={index * 0.18}
-                    walkX={slot.right - 118}
+                    walkX={slot.right - DOOR_LINE}
                   />
                 );
               })
@@ -172,7 +153,7 @@ export function QueueStage({
             {overflow > 0 && (
               <div
                 className="absolute bottom-2 flex h-12 w-12 items-center justify-center rounded-full border border-dashed bg-muted/60 text-xs font-semibold text-muted-foreground"
-                style={{ right: queueSlot(7, occupied).right, opacity: 0.6, transform: "scale(0.7)" }}
+                style={{ right: queueSlot(7, occupied).right }}
               >
                 +{overflow}
               </div>
@@ -191,12 +172,12 @@ export function QueueStage({
           </div>
         </div>
 
-        <div className="relative border-t bg-card/80 px-4 py-4 backdrop-blur sm:px-6">
+        <div className="relative border-t border-slate-200/80 bg-white/90 px-4 py-4 backdrop-blur sm:px-6 dark:border-border dark:bg-card/80">
           <div className="mx-auto flex max-w-3xl flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               {activeInRoom ? (
                 <p className="text-sm">
-                  <span className="font-semibold text-destructive">In consultation:</span>{" "}
+                  <span className="font-semibold text-rose-700 dark:text-destructive">In consultation:</span>{" "}
                   #{activeInRoom.tokenNumber} {activeInRoom.name}
                   <span className="ml-2 text-muted-foreground">
                     — {reasonLabel(activeInRoom.reason)}
@@ -210,7 +191,7 @@ export function QueueStage({
                   </span>
                 </p>
               ) : exitPhase === "available" ? (
-                <p className="text-sm font-medium text-chart-2">Room available</p>
+                <p className="text-sm font-medium text-emerald-700 dark:text-chart-2">Room available</p>
               ) : (
                 <p className="text-sm text-muted-foreground">
                   Share your clinic QR so patients can join the queue
@@ -219,7 +200,7 @@ export function QueueStage({
             </div>
             <Button
               size="lg"
-              className="gap-2 shadow-md shadow-primary/20"
+              className="gap-2 shadow-sm shadow-sky-900/5 dark:shadow-md dark:shadow-primary/20"
               disabled={!canCall}
               onClick={handleNext}
             >
@@ -269,17 +250,16 @@ function PatientFigure({
       style={{
         right: slot.right,
         zIndex: slot.zIndex,
-        opacity: isWalking ? 1 : slot.opacity,
         ["--walk-x" as string]: `${Math.max(40, walkX + 20)}px`,
-        ["--slot-scale" as string]: String(slot.scale),
         animationDelay: shuffling ? `${(slot.zIndex % 10) * 0.05}s` : undefined,
-        transform: isWalking || shuffling ? undefined : `translateY(${slot.lift}px) scale(${slot.scale})`,
       }}
     >
       <div
         className={cn(
-          "mb-1 rounded-full border bg-card px-2 py-0.5 text-[10px] font-bold shadow-sm",
-          isFront ? "border-primary text-primary" : "border-border text-foreground"
+          "mb-1 rounded-full border bg-white px-2 py-0.5 text-[10px] font-bold shadow-sm dark:bg-card",
+          isFront
+            ? "border-sky-300 text-sky-800 dark:border-primary dark:text-primary"
+            : "border-slate-200 text-slate-600 dark:border-border dark:text-foreground"
         )}
       >
         #{entry.tokenNumber}
@@ -329,22 +309,22 @@ function DollBody({ small }: { small?: boolean }) {
     <div className={cn("relative flex flex-col items-center", small && "scale-90")}>
       <div
         className={cn(
-          "relative z-10 rounded-full border-2 border-white/70 bg-primary shadow-md shadow-black/15 dark:border-background",
+          "relative z-10 rounded-full border-2 border-sky-200 bg-sky-100 shadow-sm dark:border-background dark:bg-primary dark:shadow-md",
           small ? "h-6 w-6" : "h-7 w-7"
         )}
       >
-        <div className="absolute left-1.5 top-2 h-1 w-1 rounded-full bg-black/50 dark:bg-background/80" />
-        <div className="absolute right-1.5 top-2 h-1 w-1 rounded-full bg-black/50 dark:bg-background/80" />
+        <div className="absolute left-1.5 top-2 h-1 w-1 rounded-full bg-sky-600/35 dark:bg-background/80" />
+        <div className="absolute right-1.5 top-2 h-1 w-1 rounded-full bg-sky-600/35 dark:bg-background/80" />
       </div>
       <div
         className={cn(
-          "-mt-1 rounded-t-2xl rounded-b-lg border-2 border-white/60 bg-primary shadow-lg shadow-black/20 brightness-90 dark:border-background dark:brightness-100",
+          "-mt-1 rounded-t-2xl rounded-b-lg border-2 border-sky-200 bg-sky-200/90 shadow-sm dark:border-background dark:bg-primary dark:shadow-lg",
           small ? "h-8 w-7" : "h-10 w-9"
         )}
       />
       <div
         className={cn(
-          "mt-1 rounded-full blur-[1px] bg-foreground/25 dark:bg-foreground/15",
+          "mt-1 rounded-full blur-[1px] bg-sky-900/8 dark:bg-foreground/15",
           small ? "h-1 w-6" : "h-1.5 w-8"
         )}
       />
@@ -367,10 +347,10 @@ function ConsultationDoor({
         className={cn(
           "mb-2 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-wider",
           occupied
-            ? "bg-destructive/15 text-destructive"
+            ? "bg-rose-50 text-rose-700 dark:bg-destructive/15 dark:text-destructive"
             : doorAvailable
-              ? "bg-chart-2/15 text-chart-2"
-              : "bg-muted text-muted-foreground"
+              ? "bg-emerald-50 text-emerald-700 dark:bg-chart-2/15 dark:text-chart-2"
+              : "bg-slate-100 text-slate-500 dark:bg-muted dark:text-muted-foreground"
         )}
       >
         {occupied ? "In consultation" : doorAvailable ? "Consultation room · Available" : "Consultation room"}
@@ -381,16 +361,16 @@ function ConsultationDoor({
           className={cn(
             "absolute -left-[5.5rem] bottom-4 flex h-28 w-24 flex-col items-center justify-center rounded-lg border p-2 text-center shadow-sm transition-all duration-500",
             occupied
-              ? "animate-room-glow-red border-destructive/50 bg-destructive/15 dark:border-destructive/40 dark:bg-destructive/10"
+              ? "border-rose-200 bg-rose-50/90 dark:animate-room-glow-red dark:border-destructive/40 dark:bg-destructive/10"
               : doorAvailable
-                ? "border-chart-2/45 bg-chart-2/12 dark:border-chart-2/30 dark:bg-chart-2/5"
-                : "border-border bg-muted/50 dark:bg-muted/30"
+                ? "border-emerald-200 bg-emerald-50/90 dark:border-chart-2/30 dark:bg-chart-2/5"
+                : "border-slate-200 bg-slate-50 dark:border-border dark:bg-muted/30"
           )}
         >
           {inProgress ? (
             <>
-              <Stethoscope className="mb-1 h-5 w-5 text-destructive" />
-              <p className="text-[10px] font-bold text-destructive">#{inProgress.tokenNumber}</p>
+              <Stethoscope className="mb-1 h-5 w-5 text-rose-600 dark:text-destructive" />
+              <p className="text-[10px] font-bold text-rose-700 dark:text-destructive">#{inProgress.tokenNumber}</p>
               <p className="max-w-full truncate text-[9px] font-medium">{inProgress.name.split(" ")[0]}</p>
               <span
                 className={cn(
@@ -403,8 +383,8 @@ function ConsultationDoor({
             </>
           ) : doorAvailable ? (
             <>
-              <DoorOpen className="mb-1 h-5 w-5 text-chart-2" />
-              <p className="text-[9px] font-medium text-chart-2">Ready</p>
+              <DoorOpen className="mb-1 h-5 w-5 text-emerald-600 dark:text-chart-2" />
+              <p className="text-[9px] font-medium text-emerald-700 dark:text-chart-2">Ready</p>
             </>
           ) : (
             <p className="text-[9px] text-muted-foreground">Please wait</p>
@@ -415,34 +395,44 @@ function ConsultationDoor({
           className={cn(
             "relative z-10 flex h-36 w-[4.5rem] flex-col items-center justify-end rounded-t-xl border-2 pb-2 shadow-sm transition-all duration-500",
             occupied
-              ? "animate-door-aura-red border-destructive/55 bg-gradient-to-b from-destructive/25 to-muted dark:border-destructive/50 dark:from-destructive/20"
+              ? "border-rose-300/80 bg-gradient-to-b from-rose-50 to-white dark:animate-door-aura-red dark:border-destructive/50 dark:from-destructive/20 dark:to-muted"
               : doorAvailable
-                ? "animate-door-aura-green border-chart-2/55 bg-gradient-to-b from-chart-2/20 to-muted dark:border-chart-2/50 dark:from-chart-2/15"
-                : "border-border bg-gradient-to-b from-muted to-muted/80 dark:from-muted/80"
+                ? "border-emerald-300/70 bg-gradient-to-b from-emerald-50/80 to-white dark:animate-door-aura-green dark:border-chart-2/50 dark:from-chart-2/15 dark:to-muted"
+                : "border-slate-200 bg-gradient-to-b from-slate-50 to-white dark:border-border dark:from-muted/80 dark:to-muted/80"
           )}
         >
           <div
             className={cn(
-              "absolute inset-x-1 top-2 bottom-2 origin-left rounded-sm border bg-card/95 transition-all duration-700 ease-out",
-              doorAvailable ? "scale-x-[0.2] border-chart-2/30 opacity-70" : "scale-x-100 border-border opacity-95"
+              "absolute inset-x-1 top-2 bottom-2 origin-left rounded-sm border bg-white transition-all duration-700 ease-out dark:bg-card/95",
+              doorAvailable
+                ? "scale-x-[0.2] border-emerald-200/80 opacity-80 dark:border-chart-2/30 dark:opacity-70"
+                : "scale-x-100 border-slate-200 opacity-95 dark:border-border"
             )}
           />
           <div
             className={cn(
               "relative z-10 mb-1 rounded-full p-1.5",
-              occupied ? "bg-destructive/20" : doorAvailable ? "bg-chart-2/20" : "bg-muted"
+              occupied
+                ? "bg-rose-100 dark:bg-destructive/20"
+                : doorAvailable
+                  ? "bg-emerald-100 dark:bg-chart-2/20"
+                  : "bg-slate-100 dark:bg-muted"
             )}
           >
             {doorAvailable ? (
-              <DoorOpen className="h-4 w-4 text-chart-2" />
+              <DoorOpen className="h-4 w-4 text-emerald-600 dark:text-chart-2" />
             ) : (
-              <DoorClosed className="h-4 w-4 text-destructive" />
+              <DoorClosed className="h-4 w-4 text-rose-600 dark:text-destructive" />
             )}
           </div>
           <span
             className={cn(
               "relative z-10 text-[9px] font-semibold uppercase tracking-wide",
-              occupied ? "text-destructive" : doorAvailable ? "text-chart-2" : "text-muted-foreground"
+              occupied
+                ? "text-rose-700 dark:text-destructive"
+                : doorAvailable
+                  ? "text-emerald-700 dark:text-chart-2"
+                  : "text-slate-500 dark:text-muted-foreground"
             )}
           >
             {doorAvailable ? "Open" : "Closed"}

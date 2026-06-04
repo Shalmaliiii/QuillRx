@@ -24,9 +24,10 @@ model Doctor {
   logoUrl            String?
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
-  patients           Patient[]
-  prescriptions      Prescription[]
-  queueEntries       QueueEntry[]
+  patients              Patient[]
+  prescriptions         Prescription[]
+  queueEntries          QueueEntry[]
+  prescriptionTemplates PrescriptionTemplate[]
 }
 
 enum QueueStatus {
@@ -124,6 +125,29 @@ model Prescription {
 
   @@index([doctorId])
   @@index([patientId])
+}
+
+model PrescriptionTemplate {
+  id                String     @id @default(auto()) @map("_id") @db.ObjectId
+  doctorId          String     @db.ObjectId
+  name              String
+  description       String?
+  symptoms          String?
+  diagnosis         String?
+  vitals            Vital?
+  medicines         Medicine[]
+  labTests          String?
+  advice            String?
+  followUpDays      Int?
+  consultationFee   Float?     @default(0)
+  additionalCharges Float?     @default(0)
+  discount          Float?     @default(0)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  doctor            Doctor     @relation(fields: [doctorId], references: [id])
+
+  @@index([doctorId])
+  @@index([doctorId, name])
 }
 
 model MedicineCatalog {

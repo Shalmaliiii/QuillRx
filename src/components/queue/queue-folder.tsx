@@ -1,143 +1,123 @@
 "use client";
 
-import { useState } from "react";
-import { FolderOpen } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { Loader2, UserX, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { reasonLabel, reasonChipClasses } from "@/lib/queue-options";
 import type { QueueEntryData } from "@/types";
 
-const CARD_H = 132;
-
-function FolderPatientCard({
+function WaitingPatientCard({
   entry,
-  isFront,
+  isNext,
+  busy,
+  onNoShow,
 }: {
   entry: QueueEntryData;
-  isFront?: boolean;
+  isNext?: boolean;
+  busy?: boolean;
+  onNoShow?: () => void;
 }) {
   return (
     <div
       className={cn(
-        "h-full w-full overflow-hidden rounded-xl border-2 bg-card shadow-md",
-        isFront ? "border-primary/45" : "border-border/70"
+        "rounded-xl border bg-card p-3 shadow-sm transition-colors",
+        isNext
+          ? "border-primary ring-2 ring-primary/40 shadow-md shadow-primary/10"
+          : "border-border/80"
       )}
     >
-      <div className="flex items-center gap-2 border-b border-border/50 px-3 py-2">
-        <span className="rounded-md bg-primary/15 px-2 py-0.5 text-xs font-bold tabular-nums text-primary">
-          #{entry.tokenNumber}
-        </span>
-        {isFront && (
-          <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase text-primary-foreground">
-            Up next
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={cn(
+                "rounded-md px-2 py-0.5 text-xs font-bold tabular-nums",
+                isNext ? "bg-primary text-primary-foreground" : "bg-primary/15 text-primary"
+              )}
+            >
+              #{entry.tokenNumber}
+            </span>
+            <p className="truncate font-semibold text-foreground">{entry.name}</p>
+            {isNext && (
+              <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                Next up
+              </span>
+            )}
+          </div>
+          <span
+            className={cn(
+              "mt-2 inline-block max-w-full truncate rounded-full px-2 py-0.5 text-xs font-medium",
+              reasonChipClasses(entry.reason)
+            )}
+          >
+            {reasonLabel(entry.reason)}
           </span>
-        )}
-      </div>
-      <div className="px-3 py-3">
-        <p className="truncate font-semibold text-foreground">{entry.name}</p>
-        <span
-          className={cn(
-            "mt-1.5 inline-block max-w-full truncate rounded-full px-2 py-0.5 text-xs font-medium",
-            reasonChipClasses(entry.reason)
+          {isNext && (
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Joined {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true })}
+            </p>
           )}
-        >
-          {reasonLabel(entry.reason)}
-        </span>
+        </div>
+
+        {isNext && onNoShow && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onNoShow}
+            disabled={busy}
+            className="shrink-0 gap-1.5 text-muted-foreground"
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserX className="h-4 w-4" />}
+            No-show
+          </Button>
+        )}
       </div>
     </div>
   );
 }
 
-/** Waiting patients stacked in a folder — hover slides the top card aside. */
+/** All waiting patients in one list — first entry highlighted as next up. */
 export function QueueFolder({
   entries,
-  frontEntryId,
   className,
+  onNoShow,
+  busyId,
 }: {
   entries: QueueEntryData[];
-  frontEntryId?: string;
-  promoting?: boolean;
-  popEntryId?: string | null;
   className?: string;
+  onNoShow?: (entry: QueueEntryData) => void;
+  busyId?: string | null;
 }) {
-  const [hovering, setHovering] = useState(false);
-  const visible = entries.slice(0, 5);
-  const overflow = entries.length - visible.length;
-  const count = visible.length;
-  const stackHeight = CARD_H + Math.max(0, count - 1) * 14;
-
   if (entries.length === 0) return null;
 
   return (
     <div
       className={cn(
-        "relative flex w-full flex-col rounded-xl border border-border/80 bg-muted/30 p-4 dark:bg-muted/20",
+        "flex w-full flex-col rounded-xl border border-border/80 bg-muted/30 p-4 dark:bg-muted/20",
         className
       )}
-      onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => setHovering(false)}
     >
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <FolderOpen className="h-4 w-4 text-primary" />
-          <p className="text-sm font-semibold text-foreground">Waiting folder</p>
+          <Users className="h-4 w-4 text-primary" />
+          <p className="text-sm font-semibold text-foreground">Waiting list</p>
         </div>
         <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
           {entries.length} patient{entries.length === 1 ? "" : "s"}
         </span>
       </div>
 
-      <div className="relative overflow-hidden rounded-2xl rounded-tl-md border border-border/60 bg-gradient-to-b from-muted/80 to-muted/30 p-4 pb-5 dark:from-muted/50 dark:to-muted/20">
-        {/* Folder tab */}
-        <div className="absolute -top-px left-3 h-4 w-16 rounded-t-md border border-b-0 border-border/60 bg-muted/90 dark:bg-muted/70" />
-
-        {/* Card stack — clipped so nothing escapes */}
-        <div
-          className="relative mx-auto w-full max-w-md"
-          style={{ height: stackHeight + (hovering && count > 1 ? 8 : 0) }}
-        >
-          {visible.map((entry, i) => {
-            const isTop = i === 0;
-            const isFront = entry.id === frontEntryId;
-            const layer = i;
-            const peek = layer * 14;
-
-            return (
-              <div
-                key={entry.id}
-                className={cn(
-                  "absolute left-0 right-0 transition-all duration-300 ease-out",
-                  isTop && hovering && count > 1 && "translate-x-[28%] scale-[0.88] opacity-95",
-                  !isTop && hovering && "translate-y-[-2px]"
-                )}
-                style={{
-                  height: CARD_H,
-                  bottom: peek,
-                  zIndex: count - i,
-                  transitionDelay: isTop && hovering ? "0ms" : `${layer * 40}ms`,
-                }}
-              >
-                <FolderPatientCard entry={entry} isFront={isFront} />
-              </div>
-            );
-          })}
-        </div>
-
-        {overflow > 0 && (
-          <p className="mt-3 text-center text-xs font-medium text-muted-foreground">
-            +{overflow} more not shown
-          </p>
-        )}
-
-        {count > 1 && !hovering && (
-          <p className="mt-3 text-center text-[11px] text-muted-foreground">
-            Hover to peek at patients behind
-          </p>
-        )}
-        {count > 1 && hovering && (
-          <p className="mt-3 text-center text-[11px] font-medium text-primary">
-            {count} patients in folder
-          </p>
-        )}
+      <div className="flex max-h-[480px] flex-col gap-2 overflow-y-auto pr-1">
+        {entries.map((entry, index) => (
+          <WaitingPatientCard
+            key={entry.id}
+            entry={entry}
+            isNext={index === 0}
+            busy={busyId === entry.id}
+            onNoShow={index === 0 && onNoShow ? () => onNoShow(entry) : undefined}
+          />
+        ))}
       </div>
     </div>
   );

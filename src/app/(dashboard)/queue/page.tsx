@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { usePageHeader } from "@/contexts/page-header-context";
 import { QueueStage } from "@/components/queue/queue-stage";
 import { QueueFolder } from "@/components/queue/queue-folder";
+import { CompletedQueueSection } from "@/components/queue/completed-queue-section";
 import {
   reasonLabel,
   durationLabel,
@@ -145,8 +146,6 @@ export default function QueuePage() {
   const entries = data?.entries ?? [];
   const inProgress = entries.filter((e) => e.status === "IN_PROGRESS");
   const waiting = entries.filter((e) => e.status === "WAITING");
-  const nextInQueue = waiting[0] ?? null;
-  const folderPatients = waiting.slice(1);
   const finished = entries.filter(
     (e) => e.status === "DONE" || e.status === "NO_SHOW" || e.status === "CANCELLED"
   );
@@ -191,7 +190,7 @@ export default function QueuePage() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <StatCard icon={Clock} tone="text-primary bg-primary/10" label="Waiting" value={data?.counts.waiting ?? 0} />
         <StatCard icon={Stethoscope} tone="text-chart-1 bg-chart-1/10" label="In Progress" value={data?.counts.inProgress ?? 0} />
         <StatCard icon={CheckCircle2} tone="text-chart-2 bg-chart-2/10" label="Seen Today" value={data?.counts.done ?? 0} />
@@ -225,64 +224,21 @@ export default function QueuePage() {
         </section>
       )}
 
-      {nextInQueue && (
+      {waiting.length > 0 && (
         <section className="space-y-4">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Queue details
           </h2>
 
-          <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">Next in queue</p>
-              <QueueCard
-                entry={nextInQueue}
-                compact
-                busy={busyId === nextInQueue.id}
-                onNoShow={() => updateStatus(nextInQueue.id, "NO_SHOW")}
-              />
-            </div>
-
-            {folderPatients.length > 0 ? (
-              <QueueFolder entries={folderPatients} className="h-full" />
-            ) : (
-              <div className="flex min-h-[220px] items-center justify-center rounded-xl border border-dashed border-border/80 bg-muted/20 px-6 text-center text-sm text-muted-foreground">
-                No other patients waiting behind them
-              </div>
-            )}
-          </div>
+          <QueueFolder
+            entries={waiting}
+            onNoShow={(entry) => updateStatus(entry.id, "NO_SHOW")}
+            busyId={busyId}
+          />
         </section>
       )}
 
-      {finished.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Completed
-          </h2>
-          <Card>
-            <CardContent className="divide-y p-0">
-              {finished.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="flex items-center justify-between px-4 py-3"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="text-sm font-semibold text-muted-foreground">
-                      #{entry.tokenNumber}
-                    </span>
-                    <span className="truncate text-sm font-medium">{entry.name}</span>
-                    <span className={cn("rounded-full px-2 py-0.5 text-xs", reasonChipClasses(entry.reason))}>
-                      {reasonLabel(entry.reason)}
-                    </span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    {entry.status === "DONE" ? "Seen" : "No-show"}
-                  </span>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </section>
-      )}
+      <CompletedQueueSection entries={finished} />
     </div>
   );
 }
@@ -300,14 +256,14 @@ function StatCard({
 }) {
   const [fg, bg] = tone.split(" ");
   return (
-    <Card>
-      <CardContent className="flex items-center gap-3 pt-6">
-        <div className={`rounded-xl p-2.5 ${bg}`}>
-          <Icon className={`h-5 w-5 ${fg}`} />
+    <Card className="min-w-0">
+      <CardContent className="flex flex-col items-center gap-1.5 p-3 text-center sm:flex-row sm:items-center sm:gap-3 sm:p-4 sm:text-left sm:pt-6">
+        <div className={cn("shrink-0 rounded-lg p-2 sm:rounded-xl sm:p-2.5", bg)}>
+          <Icon className={cn("h-4 w-4 sm:h-5 sm:w-5", fg)} />
         </div>
-        <div>
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="text-xl font-bold">{value}</p>
+        <div className="min-w-0 w-full">
+          <p className="truncate text-[10px] leading-tight text-muted-foreground sm:text-xs">{label}</p>
+          <p className="text-base font-bold tabular-nums sm:text-xl">{value}</p>
         </div>
       </CardContent>
     </Card>

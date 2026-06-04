@@ -18,6 +18,8 @@ import {
 import { toast } from "sonner";
 import { usePageHeader } from "@/contexts/page-header-context";
 import { MedicineSearchInput } from "@/components/medicines/medicine-search-input";
+import { TemplatePicker } from "@/components/templates/template-picker";
+import type { TemplateFormValues } from "@/lib/prescription-template";
 import type { PatientData, MedicineData } from "@/types";
 
 const emptyMedicine: MedicineData = {
@@ -142,6 +144,14 @@ export default function NewPrescriptionPage() {
     );
   };
 
+  const applyTemplate = (values: Partial<TemplateFormValues>, _name: string) => {
+    if (values.diagnosis != null) setDiagnosis(values.diagnosis);
+    if (values.medicines) setMedicines(values.medicines);
+    if (values.labTests != null) setLabTests(values.labTests);
+    if (values.advice != null) setAdvice(values.advice);
+    if (values.followUpDate != null) setFollowUpDate(values.followUpDate);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPatient) {
@@ -196,6 +206,8 @@ export default function NewPrescriptionPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      <TemplatePicker onApply={applyTemplate} />
+
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Patient Selection */}
         <Card>
