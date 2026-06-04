@@ -5,40 +5,27 @@ import { usePathname, useRouter } from "next/navigation";
 import { PlusCircle, Minimize2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import {
+  readFabPrefs,
+  subscribeFabPrefs,
+  writeFabPrefs,
+  type FabPrefs,
+} from "@/lib/prescription-fab-prefs";
 
-const STORAGE_KEY = "quillrx-fab";
 const DRAG_THRESHOLD = 6;
 const FAB_SIZE = 56;
 const EXPANDED_WIDTH = 220;
 const EDGE = 16;
 
-type FabState = {
-  collapsed: boolean;
-  bottom: number;
-  right: number;
-};
-
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
-}
-
-function readStoredState(): FabState | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as FabState;
-  } catch {
-    return null;
-  }
 }
 
 export function NewPrescriptionFab() {
   const pathname = usePathname();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
-  const [pos, setPos] = useState({ bottom: 24, right: 24 });
+  const [prefs, setPrefs] = useState<FabPrefs>(() => readFabPrefs());
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef({
     active: false,
@@ -50,34 +37,14 @@ export function NewPrescriptionFab() {
   });
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    const stored = readStoredState();
-    const mobile = window.matchMedia("(max-width: 767px)").matches;
-    if (stored) {
-      setCollapsed(stored.collapsed);
-      setPos({ bottom: stored.bottom, right: stored.right });
-    } else {
-      setCollapsed(mobile);
-    }
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!mounted) return;
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ collapsed, bottom: pos.bottom, right: pos.right })
-    );
-  }, [collapsed, pos, mounted]);
-
-  useEffect(() => {
-    return () => {
-      if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
-    };
+  const updatePrefs = useCallback((patch: Partial<FabPrefs>) => {
+    const next = { ...readFabPrefs(), ...patch };
+    writeFabPrefs(next);
+    setPrefs(next);
   }, []);
 
   const clampPosition = useCallback(
-    (bottom: number, right: number, iconOnly = collapsed) => {
+    (bottom: number, right: number, iconOnly = prefs.collapsed) => {
       const width = iconOnly ? FAB_SIZE : EXPANDED_WIDTH;
       const maxBottom = window.innerHeight - FAB_SIZE - EDGE;
       const maxRight = window.innerWidth - width - EDGE;
@@ -86,13 +53,32 @@ export function NewPrescriptionFab() {
         right: clamp(right, EDGE, maxRight),
       };
     },
-    [collapsed]
+    [prefs.collapsed]
   );
 
   useEffect(() => {
+    const mobile = window.matchMedia("(max-width: 767px)").matches;
+    if (!localStorage.getItem("quillrx-fab")) {
+      writeFabPrefs({ ...readFabPrefs(), collapsed: mobile });
+    }
+    setPrefs(readFabPrefs());
+    setMounted(true);
+    return subscribeFabPrefs(() => setPrefs(readFabPrefs()));
+  }, []);
+
+  useEffect(() => {
     if (!mounted) return;
-    setPos((p) => clampPosition(p.bottom, p.right));
-  }, [collapsed, mounted, clampPosition]);
+    const current = readFabPrefs();
+    updatePrefs(clampPosition(current.bottom, current.right));
+    // Re-clamp when switching collapsed ↔ expanded
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefs.collapsed, mounted]);
+
+  useEffect(() => {
+    return () => {
+      if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+    };
+  }, []);
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0) return;
@@ -101,8 +87,8 @@ export function NewPrescriptionFab() {
       moved: false,
       startX: e.clientX,
       startY: e.clientY,
-      startBottom: pos.bottom,
-      startRight: pos.right,
+      startBottom: prefs.bottom,
+      startRight: prefs.right,
     };
     e.currentTarget.setPointerCapture(e.pointerId);
   };
@@ -122,7 +108,7 @@ export function NewPrescriptionFab() {
       }
     }
     if (!dragRef.current.moved) return;
-    setPos(
+    updatePrefs(
       clampPosition(
         dragRef.current.startBottom - dy,
         dragRef.current.startRight - dx,
@@ -138,7 +124,7 @@ export function NewPrescriptionFab() {
     setIsDragging(false);
     e.currentTarget.releasePointerCapture(e.pointerId);
 
-    if (wasDrag || !collapsed) return;
+    if (wasDrag || !prefs.collapsed) return;
 
     if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
     tapTimerRef.current = setTimeout(() => {
@@ -153,23 +139,23 @@ export function NewPrescriptionFab() {
       clearTimeout(tapTimerRef.current);
       tapTimerRef.current = null;
     }
-    setCollapsed(false);
+    updatePrefs({ collapsed: false });
   };
 
   const onCollapse = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setCollapsed(true);
+    updatePrefs({ collapsed: true });
   };
 
-  if (pathname === "/prescriptions/new" || !mounted) return null;
+  if (pathname === "/prescriptions/new" || !mounted || !prefs.enabled) return null;
 
   return (
     <div
       className="fixed z-40 touch-none select-none"
-      style={{ bottom: pos.bottom, right: pos.right }}
+      style={{ bottom: prefs.bottom, right: prefs.right }}
     >
-      {collapsed ? (
+      {prefs.collapsed ? (
         <button
           type="button"
           aria-label="New prescription — drag to move, tap to open, double-tap to expand"

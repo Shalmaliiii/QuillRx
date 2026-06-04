@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Image from "next/image";
@@ -17,6 +17,11 @@ import { useTheme } from "next-themes";
 import { doctorProfileSchema, type DoctorProfileInput } from "@/lib/validators";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import {
+  readFabPrefs,
+  setFabEnabled,
+  subscribeFabPrefs,
+} from "@/lib/prescription-fab-prefs";
 
 export default function SettingsPage() {
   const { doctor, refreshProfile } = useAuth();
@@ -32,6 +37,13 @@ export default function SettingsPage() {
   const [uploadingSignature, setUploadingSignature] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
+
+  const [fabEnabled, setFabEnabledState] = useState(true);
+
+  useEffect(() => {
+    setFabEnabledState(readFabPrefs().enabled);
+    return subscribeFabPrefs(() => setFabEnabledState(readFabPrefs().enabled));
+  }, []);
 
   const currentValues = (): DoctorProfileInput => ({
     fullName: doctor?.fullName || "",
@@ -115,7 +127,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6 pb-8">
       {/* Profile */}
       <Card>
         <CardHeader>
@@ -313,8 +325,8 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle>Appearance</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
+        <CardContent className="space-y-5">
+          <div className="flex items-center justify-between gap-4">
             <div>
               <p className="font-medium text-sm">Dark Mode</p>
               <p className="text-xs text-muted-foreground">Toggle dark theme</p>
@@ -322,6 +334,19 @@ export default function SettingsPage() {
             <Switch
               checked={theme === "dark"}
               onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+            />
+          </div>
+          <Separator />
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="font-medium text-sm">New Prescription button</p>
+              <p className="text-xs text-muted-foreground">
+                Show the floating shortcut on screen
+              </p>
+            </div>
+            <Switch
+              checked={fabEnabled}
+              onCheckedChange={(checked) => setFabEnabled(checked)}
             />
           </div>
         </CardContent>

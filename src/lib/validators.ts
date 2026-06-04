@@ -116,3 +116,10 @@ export const prescriptionTemplateSchema = z.object({
 });
 
 export type PrescriptionTemplateInput = z.infer<typeof prescriptionTemplateSchema>;
+
+export const medicineCatalogCreateSchema = z.object({
+  genericName: z.string().min(2, "Medicine name is required"),
+  brandName: z.string().optional(),
+  strength: z.string().optional(),
+  form: z.string().optional(),
+});
