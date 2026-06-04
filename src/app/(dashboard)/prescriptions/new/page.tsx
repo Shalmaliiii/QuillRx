@@ -360,7 +360,7 @@ export default function NewPrescriptionPage() {
                     <Label className="text-xs">Medicine Name *</Label>
                     <MedicineSearchInput
                       value={med.name}
-                      strength={med.strength ?? undefined}
+                      strength={med.strength || undefined}
                       onNameChange={(name) => updateMedicine(index, "name", name)}
                       onStrengthChange={(s) => updateMedicine(index, "strength", s)}
                       className="h-10"

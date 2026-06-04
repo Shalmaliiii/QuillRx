@@ -3,6 +3,12 @@ import { prisma } from "@/lib/db";
 import { getAuthDoctorId } from "@/lib/auth";
 import { prescriptionSchema } from "@/lib/validators";
 
+type PrescriptionPatientSearchRow = {
+  id: string;
+  fullName: string;
+  phone: string;
+};
+
 export async function GET(request: Request) {
   try {
     const doctorId = await getAuthDoctorId();
@@ -20,7 +26,7 @@ export async function GET(request: Request) {
     if (patientId) where.patientId = patientId;
 
     if (q) {
-      const patients = await prisma.patient.findMany({
+      const patients: PrescriptionPatientSearchRow[] = await prisma.patient.findMany({
         where: { doctorId },
         select: { id: true, fullName: true, phone: true },
       });
