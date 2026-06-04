@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,13 +21,18 @@ import {
   Download,
   Printer,
   LogOut,
+  Loader2,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { usePageHeader } from "@/contexts/page-header-context";
 import { QueueQRCard } from "@/components/queue/queue-qr-card";
+import { DoctorCardPreview } from "@/components/profile/doctor-card-preview";
+import { shareDoctorCardPdf } from "@/lib/share-doctor-card";
+import { toast } from "sonner";
 
 export default function ProfilePage() {
   const { doctor, logout } = useAuth();
+  const [sharingCard, setSharingCard] = useState(false);
 
   usePageHeader({
     title: "Profile",
@@ -39,23 +45,34 @@ export default function ProfilePage() {
 
   const cardPdfUrl = "/api/doctor/card/pdf";
 
-  const handleWhatsApp = () => {
-    const lines = [
-      displayName || "Doctor",
-      [doctor?.qualification, doctor?.specialization].filter(Boolean).join(" | "),
-      doctor?.registrationNumber ? `Reg. No: ${doctor.registrationNumber}` : "",
-      "",
-      doctor?.clinicName || "",
-      doctor?.clinicPhone || doctor?.mobileNumber
-        ? `Phone: ${doctor?.clinicPhone || doctor?.mobileNumber}`
-        : "",
-      doctor?.email ? `Email: ${doctor.email}` : "",
-      doctor?.clinicAddress ? `Address: ${doctor.clinicAddress}` : "",
-      doctor?.consultationTimings ? `Timings: ${doctor.consultationTimings}` : "",
-    ].filter((l) => l !== undefined);
+  const handleWhatsApp = async () => {
+    setSharingCard(true);
+    try {
+      const fileSlug = (displayName || "doctor").replace(/[^\w.-]+/g, "-");
+      const result = await shareDoctorCardPdf({
+        pdfUrl: cardPdfUrl,
+        fileName: `${fileSlug}-visiting-card.pdf`,
+        title: `${displayName} — Visiting Card`,
+        text: [
+          displayName,
+          [doctor?.qualification, doctor?.specialization].filter(Boolean).join(" · "),
+          doctor?.clinicName,
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      });
 
-    const message = encodeURIComponent(lines.join("\n").replace(/\n{3,}/g, "\n\n"));
-    window.open(`https://wa.me/?text=${message}`, "_blank");
+      if (result === "shared") {
+        toast.success("Choose WhatsApp to send your visiting card PDF");
+      } else {
+        toast.info("Card downloaded — attach the PDF in WhatsApp");
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return;
+      toast.error(error instanceof Error ? error.message : "Could not share card");
+    } finally {
+      setSharingCard(false);
+    }
   };
 
   return (
@@ -170,82 +187,16 @@ export default function ProfilePage() {
           </p>
         </CardHeader>
         <CardContent className="space-y-5">
-          {/* Card preview */}
-          <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-            <div className="flex">
-              <div className="w-2 shrink-0 bg-gradient-to-b from-primary to-primary/50" />
-              <div className="flex-1 p-5">
-                <div className="flex items-center gap-3">
-                  {doctor?.logoUrl ? (
-                    <div className="size-12 shrink-0 overflow-hidden rounded-lg border bg-card">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={doctor.logoUrl}
-                        alt="Clinic logo"
-                        className="size-full object-cover"
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-lg font-bold text-primary">
-                      {doctor?.fullName?.charAt(0) || "D"}
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <p className="truncate text-lg font-bold text-primary">
-                      {displayName || "Doctor"}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {[doctor?.qualification, doctor?.specialization]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
-                    {doctor?.registrationNumber && (
-                      <p className="text-[11px] text-muted-foreground">
-                        Reg. No: {doctor.registrationNumber}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="my-3 h-px bg-border" />
-
-                {doctor?.clinicName && (
-                  <p className="font-semibold">{doctor.clinicName}</p>
-                )}
-                <div className="mt-1 space-y-1 text-xs text-muted-foreground">
-                  {(doctor?.clinicPhone || doctor?.mobileNumber) && (
-                    <p className="flex items-center gap-2">
-                      <Phone className="h-3 w-3 shrink-0" />
-                      {doctor?.clinicPhone || doctor?.mobileNumber}
-                    </p>
-                  )}
-                  {doctor?.email && (
-                    <p className="flex items-center gap-2">
-                      <Mail className="h-3 w-3 shrink-0" />
-                      {doctor.email}
-                    </p>
-                  )}
-                  {doctor?.clinicAddress && (
-                    <p className="flex items-center gap-2">
-                      <MapPin className="h-3 w-3 shrink-0" />
-                      {doctor.clinicAddress}
-                    </p>
-                  )}
-                  {doctor?.consultationTimings && (
-                    <p className="flex items-center gap-2">
-                      <Clock className="h-3 w-3 shrink-0" />
-                      {doctor.consultationTimings}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
+          <DoctorCardPreview doctor={doctor} displayName={displayName} />
 
           {/* Actions */}
           <div className="flex flex-wrap gap-3">
-            <Button onClick={handleWhatsApp} className="gap-2">
-              <Send className="h-4 w-4" />
+            <Button onClick={handleWhatsApp} disabled={sharingCard} className="gap-2">
+              {sharingCard ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
               Send on WhatsApp
             </Button>
             <a href={cardPdfUrl} target="_blank" rel="noopener noreferrer">

@@ -125,9 +125,9 @@ export function QueueStage({
 
           <div className="absolute inset-x-4 bottom-[4.5rem] top-16 sm:inset-x-8">
             {visible.length === 0 && !showExitDoll ? (
-              <div className="flex h-full items-end pb-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Users className="h-5 w-5 opacity-40" />
+              <div className="relative z-20 flex h-full items-center pr-36 sm:pr-44">
+                <div className="flex max-w-[min(100%,16rem)] items-start gap-2 text-sm text-muted-foreground">
+                  <Users className="mt-0.5 h-5 w-5 shrink-0 opacity-40" />
                   <span>Queue is empty — waiting for check-ins</span>
                 </div>
               </div>
@@ -165,6 +165,7 @@ export function QueueStage({
               inProgress={activeInRoom}
               doorAvailable={doorAvailable}
               occupied={occupied}
+              queueEmpty={waiting.length === 0}
             />
             {showExitDoll && exiting && (
               <ExitingPatientFigure entry={exiting} phase={exitPhase === "leaving" ? "leaving" : "idle"} />
@@ -336,11 +337,14 @@ function ConsultationDoor({
   inProgress,
   doorAvailable,
   occupied,
+  queueEmpty = false,
 }: {
   inProgress: QueueEntryData | null;
   doorAvailable: boolean;
   occupied: boolean;
+  queueEmpty?: boolean;
 }) {
+  const showSidePanel = !queueEmpty || occupied;
   return (
     <div className="relative flex flex-col items-center">
       <div
@@ -357,6 +361,7 @@ function ConsultationDoor({
       </div>
 
       <div className="relative flex items-end">
+        {showSidePanel && (
         <div
           className={cn(
             "absolute -left-[5.5rem] bottom-4 flex h-28 w-24 flex-col items-center justify-center rounded-lg border p-2 text-center shadow-sm transition-all duration-500",
@@ -390,6 +395,7 @@ function ConsultationDoor({
             <p className="text-[9px] text-muted-foreground">Please wait</p>
           )}
         </div>
+        )}
 
         <div
           className={cn(
