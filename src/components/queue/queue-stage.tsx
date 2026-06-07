@@ -125,9 +125,15 @@ export function QueueStage({
 
           <div className="absolute inset-x-4 bottom-[4.5rem] top-16 sm:inset-x-8">
             {visible.length === 0 && !showExitDoll ? (
-              <div className="flex h-full items-end pb-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Users className="h-5 w-5 opacity-40" />
+              <div className="flex h-full items-center justify-center pb-10 pr-20 sm:justify-start sm:pb-4 sm:pr-0">
+                <div className="max-w-[13rem] rounded-2xl border border-dashed border-primary/25 bg-background/80 px-4 py-3 text-center shadow-sm backdrop-blur sm:max-w-none sm:text-left dark:bg-card/70 [&>span]:hidden">
+                  <div className="mx-auto mb-2 flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary sm:mx-0">
+                    <Users className="h-4 w-4" />
+                  </div>
+                  <p className="text-sm font-semibold text-foreground">No patients waiting</p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    New QR check-ins will appear here.
+                  </p>
                   <span>Queue is empty — waiting for check-ins</span>
                 </div>
               </div>

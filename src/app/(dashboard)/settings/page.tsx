@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Image from "next/image";
@@ -10,6 +10,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Loader2, Upload, Image as ImageIcon, Pencil, Lock, X } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { usePageHeader } from "@/contexts/page-header-context";
@@ -30,8 +38,20 @@ export default function SettingsPage() {
   const [editing, setEditing] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingSignature, setUploadingSignature] = useState(false);
+  const [logoCropSrc, setLogoCropSrc] = useState<string | null>(null);
+  const [logoCropFileName, setLogoCropFileName] = useState("clinic-logo.png");
+  const [cropZoom, setCropZoom] = useState(1);
+  const [cropX, setCropX] = useState(0);
+  const [cropY, setCropY] = useState(0);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
+  const cropImageRef = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (logoCropSrc) URL.revokeObjectURL(logoCropSrc);
+    };
+  }, [logoCropSrc]);
 
   const currentValues = (): DoctorProfileInput => ({
     fullName: doctor?.fullName || "",
@@ -111,6 +131,54 @@ export default function SettingsPage() {
       toast.error(error instanceof Error ? error.message : "Upload failed");
     } finally {
       setter(false);
+    }
+  };
+
+  const handleLogoPicked = (file: File) => {
+    if (logoCropSrc) URL.revokeObjectURL(logoCropSrc);
+    setLogoCropSrc(URL.createObjectURL(file));
+    setLogoCropFileName(file.name.replace(/\.[^.]+$/, "") || "clinic-logo");
+    setCropZoom(1);
+    setCropX(0);
+    setCropY(0);
+  };
+
+  const uploadCroppedLogo = async () => {
+    const image = cropImageRef.current;
+    if (!image) return;
+
+    const canvas = document.createElement("canvas");
+    const size = 512;
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, size, size);
+
+    const sourceSize = Math.min(image.naturalWidth, image.naturalHeight) / cropZoom;
+    const maxOffsetX = Math.max(0, (image.naturalWidth - sourceSize) / 2);
+    const maxOffsetY = Math.max(0, (image.naturalHeight - sourceSize) / 2);
+    const sourceX = (image.naturalWidth - sourceSize) / 2 + cropX * maxOffsetX;
+    const sourceY = (image.naturalHeight - sourceSize) / 2 + cropY * maxOffsetY;
+
+    ctx.drawImage(image, sourceX, sourceY, sourceSize, sourceSize, 0, 0, size, size);
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/png", 0.95)
+    );
+    if (!blob) {
+      toast.error("Could not crop logo");
+      return;
+    }
+
+    const file = new File([blob], `${logoCropFileName}.png`, { type: "image/png" });
+    await handleFileUpload(file, "logo");
+    if (logoCropSrc) URL.revokeObjectURL(logoCropSrc);
+    setLogoCropSrc(null);
+    if (logoInputRef.current) {
+      logoInputRef.current.value = "";
     }
   };
 
@@ -254,7 +322,7 @@ export default function SettingsPage() {
                 className="hidden"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
-                  if (f) handleFileUpload(f, "logo");
+                  if (f) handleLogoPicked(f);
                 }}
               />
               <Button
@@ -308,6 +376,45 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      <Dialog open={!!logoCropSrc} onOpenChange={(open) => !open && setLogoCropSrc(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Crop clinic logo</DialogTitle>
+            <DialogDescription>
+              Adjust the logo so it appears exactly how you want inside the profile circle.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="mx-auto flex size-64 items-center justify-center overflow-hidden rounded-full border-4 border-background bg-muted shadow-inner ring-1 ring-border">
+              {logoCropSrc && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  ref={cropImageRef}
+                  src={logoCropSrc}
+                  alt="Logo crop preview"
+                  className="size-full object-cover"
+                  style={{
+                    transform: `translate(${cropX * 38}px, ${cropY * 38}px) scale(${cropZoom})`,
+                  }}
+                />
+              )}
+            </div>
+            <CropSlider label="Zoom" value={cropZoom} min={1} max={3} step={0.05} onChange={setCropZoom} />
+            <CropSlider label="Move left/right" value={cropX} min={-1} max={1} step={0.02} onChange={setCropX} />
+            <CropSlider label="Move up/down" value={cropY} min={-1} max={1} step={0.02} onChange={setCropY} />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setLogoCropSrc(null)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={uploadCroppedLogo} disabled={uploadingLogo}>
+              {uploadingLogo && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save cropped logo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Dark Mode */}
       <Card>
         <CardHeader>
@@ -326,6 +433,39 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function CropSlider({
+  label,
+  value,
+  min,
+  max,
+  step,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between text-sm">
+        <Label>{label}</Label>
+        <span className="text-xs text-muted-foreground">{value.toFixed(2)}</span>
+      </div>
+      <Input
+        type="range"
+        value={value}
+        min={min}
+        max={max}
+        step={step}
+        onChange={(e) => onChange(Number(e.target.value))}
+      />
     </div>
   );
 }

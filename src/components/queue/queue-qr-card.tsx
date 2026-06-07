@@ -17,15 +17,29 @@ export function QueueQRCard() {
   useEffect(() => {
     if (!doctor?.id) return;
     const link = `${window.location.origin}/q/${doctor.id}`;
-    setUrl(link);
+    const t = setTimeout(() => setUrl(link), 0);
     QRCode.toDataURL(link, { width: 480, margin: 1, color: { dark: "#0e8c9e", light: "#ffffff" } })
       .then(setQr)
       .catch(() => setQr(null));
+    return () => clearTimeout(t);
   }, [doctor?.id]);
 
   const copyLink = async () => {
     try {
-      await navigator.clipboard.writeText(url);
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const input = document.createElement("textarea");
+        input.value = url;
+        input.setAttribute("readonly", "");
+        input.style.position = "fixed";
+        input.style.left = "-9999px";
+        document.body.appendChild(input);
+        input.select();
+        const copiedToClipboard = document.execCommand("copy");
+        document.body.removeChild(input);
+        if (!copiedToClipboard) throw new Error("Copy failed");
+      }
       setCopied(true);
       toast.success("Queue link copied");
       setTimeout(() => setCopied(false), 1500);
