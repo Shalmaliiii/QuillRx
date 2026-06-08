@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { FileText, Loader2 } from "lucide-react";
+import { toast } from "@/lib/toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -85,6 +85,7 @@ export default function QueueIntakePage() {
         toast.error(data.error || "Could not join the queue");
         return;
       }
+
       router.push(`/q/${doctorId}/status/${data.id}`);
     } catch {
       toast.error("Something went wrong. Please try again.");
@@ -274,6 +275,14 @@ export default function QueueIntakePage() {
               maxLength={500}
             />
           </div>
+        </div>
+
+        <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm text-muted-foreground">
+          <FileText className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <p>
+            Have lab reports? You can upload them on the token page after
+            joining the queue.
+          </p>
         </div>
 
         <Button type="submit" className="w-full" size="lg" disabled={submitting}>

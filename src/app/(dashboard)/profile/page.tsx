@@ -24,7 +24,7 @@ import {
 import { useAuth } from "@/contexts/auth-context";
 import { usePageHeader } from "@/contexts/page-header-context";
 import { QueueQRCard } from "@/components/queue/queue-qr-card";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { DoctorProfile } from "@/types";
 
 export default function ProfilePage() {

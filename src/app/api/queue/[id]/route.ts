@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAuthDoctorId } from "@/lib/auth";
+import { attachLabReportsToQueueEntry } from "@/lib/lab-reports";
 import type { QueueStatus } from "@/types";
 
 const VALID: QueueStatus[] = [
@@ -23,12 +24,14 @@ export async function GET(
     }
 
     const { id } = await params;
-    const entry = await prisma.queueEntry.findUnique({ where: { id } });
+    const entry = await prisma.queueEntry.findUnique({
+      where: { id },
+    });
     if (!entry || entry.doctorId !== doctorId) {
       return NextResponse.json({ error: "Entry not found" }, { status: 404 });
     }
 
-    return NextResponse.json(entry);
+    return NextResponse.json(await attachLabReportsToQueueEntry(entry));
   } catch (error) {
     console.error("Queue get error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

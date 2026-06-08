@@ -127,6 +127,7 @@ export async function GET(req: NextRequest) {
 
     const [
       todayPrescriptions,
+      todayCompletedQueuePatients,
       totalConsultations,
       pendingFollowUps,
       totalPatients,
@@ -138,6 +139,13 @@ export async function GET(req: NextRequest) {
     ] = await Promise.all([
       prisma.prescription.count({
         where: { doctorId, createdAt: { gte: today, lt: tomorrow } },
+      }),
+      prisma.queueEntry.count({
+        where: {
+          doctorId,
+          createdAt: { gte: today, lt: tomorrow },
+          status: { in: ["DONE", "NO_SHOW", "CANCELLED"] },
+        },
       }),
       prisma.prescription.count({ where: { doctorId } }),
       prisma.prescription.count({
@@ -179,7 +187,7 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({
-      todayPatients: todayPrescriptions,
+      todayPatients: todayCompletedQueuePatients || todayPrescriptions,
       totalConsultations,
       pendingFollowUps,
       totalPatients,

@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { applyTemplateToForm } from "@/lib/prescription-template";
 import type { PrescriptionTemplateData } from "@/types";
 import type { TemplateFormValues } from "@/lib/prescription-template";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 type TemplatePickerProps = {
   onApply: (values: Partial<TemplateFormValues>, templateName: string) => void;

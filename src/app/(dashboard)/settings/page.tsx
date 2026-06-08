@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Image from "next/image";
@@ -23,8 +23,13 @@ import { useAuth } from "@/contexts/auth-context";
 import { usePageHeader } from "@/contexts/page-header-context";
 import { useTheme } from "next-themes";
 import { doctorProfileSchema, type DoctorProfileInput } from "@/lib/validators";
+import {
+  readNewPrescriptionFabVisible,
+  subscribeNewPrescriptionFabVisible,
+  writeNewPrescriptionFabVisible,
+} from "@/lib/new-prescription-fab-preferences";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 export default function SettingsPage() {
   const { doctor, refreshProfile } = useAuth();
@@ -38,6 +43,11 @@ export default function SettingsPage() {
   const [editing, setEditing] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingSignature, setUploadingSignature] = useState(false);
+  const showNewPrescriptionFab = useSyncExternalStore(
+    subscribeNewPrescriptionFabVisible,
+    readNewPrescriptionFabVisible,
+    () => true
+  );
   const [logoCropSrc, setLogoCropSrc] = useState<string | null>(null);
   const [logoCropFileName, setLogoCropFileName] = useState("clinic-logo.png");
   const [cropZoom, setCropZoom] = useState(1);
@@ -141,6 +151,10 @@ export default function SettingsPage() {
     setCropZoom(1);
     setCropX(0);
     setCropY(0);
+  };
+
+  const handleNewPrescriptionFabChange = (checked: boolean) => {
+    writeNewPrescriptionFabVisible(checked);
   };
 
   const uploadCroppedLogo = async () => {
@@ -420,7 +434,7 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle>Appearance</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-5">
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium text-sm">Dark Mode</p>
@@ -429,6 +443,19 @@ export default function SettingsPage() {
             <Switch
               checked={theme === "dark"}
               onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+            />
+          </div>
+          <Separator />
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="font-medium text-sm">New Prescription button</p>
+              <p className="text-xs text-muted-foreground">
+                Show the floating shortcut on screen
+              </p>
+            </div>
+            <Switch
+              checked={showNewPrescriptionFab}
+              onCheckedChange={handleNewPrescriptionFabChange}
             />
           </div>
         </CardContent>

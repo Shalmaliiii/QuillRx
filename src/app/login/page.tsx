@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/auth-context";
 import { loginSchema, type LoginInput } from "@/lib/validators";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 export default function LoginPage() {
   const { login } = useAuth();

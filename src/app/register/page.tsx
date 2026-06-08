@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/contexts/auth-context";
 import { registerSchema, type RegisterInput } from "@/lib/validators";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 export default function RegisterPage() {
   const { register: registerUser } = useAuth();

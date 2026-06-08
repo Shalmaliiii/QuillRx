@@ -7,7 +7,6 @@ import {
   Users,
   FileText,
   Settings,
-  PlusCircle,
   LogOut,
   Menu,
   ListChecks,
@@ -140,11 +139,6 @@ export function MobileNav() {
         <div className="ml-auto flex shrink-0 items-center gap-0.5">
           <NotificationBell panelClassName="!top-[3.75rem]" />
           <AccountMenu avatarSize="default" />
-          <Link href="/prescriptions/new">
-            <Button size="icon" variant="ghost" className="shrink-0" aria-label="New prescription">
-              <PlusCircle className="h-5 w-5" />
-            </Button>
-          </Link>
         </div>
       </div>
     </header>

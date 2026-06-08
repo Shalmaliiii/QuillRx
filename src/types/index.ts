@@ -59,6 +59,7 @@ export interface PrescriptionData {
   labTests: string | null;
   advice: string | null;
   followUpDate: string | null;
+  consultationMode: "ONLINE" | "OFFLINE" | string | null;
   consultationFee: number | null;
   additionalCharges: number | null;
   discount: number | null;
@@ -68,6 +69,23 @@ export interface PrescriptionData {
   updatedAt: string;
   patient?: PatientData;
   doctor?: DoctorProfile;
+}
+
+export interface LabReportData {
+  id: string;
+  doctorId: string;
+  patientId: string | null;
+  queueEntryId: string | null;
+  title: string;
+  notes: string | null;
+  fileUrl: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  submittedByName: string | null;
+  submittedByPhone: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type QueueStatus =
@@ -96,6 +114,7 @@ export interface QueueEntryData {
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  labReports?: LabReportData[];
 }
 
 export interface PrescriptionTemplateData {

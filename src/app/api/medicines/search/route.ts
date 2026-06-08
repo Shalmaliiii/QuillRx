@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAuthDoctorId } from "@/lib/auth";
 import {
-  buildSearchText,
   medicineDisplayName,
   type MedicineCatalogEntry,
 } from "@/lib/medicine-catalog";
@@ -90,25 +89,16 @@ export async function GET(request: Request) {
           continue;
         }
 
-        const cached = await prisma.medicineCatalog.create({
-          data: {
-            genericName: entry.genericName,
-            rxCui: entry.rxCui,
-            source: "rxnorm",
-            searchText: buildSearchText(entry),
-          },
-        });
-
         merged.push({
-          id: cached.id,
-          genericName: cached.genericName,
-          brandName: cached.brandName,
-          strength: cached.strength,
-          form: cached.form,
-          rxCui: cached.rxCui,
-          source: cached.source,
-          isEssential: cached.isEssential,
-          displayName: medicineDisplayName(cached),
+          id: `rxnorm:${entry.rxCui ?? entry.genericName}`,
+          genericName: entry.genericName,
+          brandName: null,
+          strength: null,
+          form: null,
+          rxCui: entry.rxCui,
+          source: "rxnorm",
+          isEssential: false,
+          displayName: medicineDisplayName(entry),
         });
 
         if (merged.length >= LOCAL_LIMIT + RXNORM_LIMIT) break;
@@ -119,67 +109,5 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("Medicine search error:", error);
     return NextResponse.json({ error: "Search failed" }, { status: 500 });
-  }
-}
-
-export async function POST(request: Request) {
-  try {
-    const doctorId = await getAuthDoctorId();
-    if (!doctorId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const genericName = String(body.name ?? "").trim().replace(/\s+/g, " ");
-    const strength = String(body.strength ?? "").trim().replace(/\s+/g, " ") || null;
-
-    if (genericName.length < 2) {
-      return NextResponse.json({ error: "Medicine name is required" }, { status: 400 });
-    }
-
-    const entry: MedicineCatalogEntry = {
-      genericName,
-      strength,
-      source: "doctor",
-    };
-    const searchText = buildSearchText(entry);
-    const matches = await prisma.medicineCatalog.findMany({
-      where: { searchText: { contains: genericName.toLowerCase() } },
-      take: 30,
-    });
-
-    const existing = matches.find((medicine) => {
-      const sameName = medicine.genericName.toLowerCase() === genericName.toLowerCase();
-      const sameStrength = (medicine.strength ?? "").toLowerCase() === (strength ?? "").toLowerCase();
-      return sameName && sameStrength;
-    });
-
-    const saved =
-      existing ??
-      (await prisma.medicineCatalog.create({
-        data: {
-          genericName,
-          strength,
-          source: "doctor",
-          searchText,
-        },
-      }));
-
-    return NextResponse.json({
-      medicine: {
-        id: saved.id,
-        genericName: saved.genericName,
-        brandName: saved.brandName,
-        strength: saved.strength,
-        form: saved.form,
-        rxCui: saved.rxCui,
-        source: saved.source,
-        isEssential: saved.isEssential,
-        displayName: medicineDisplayName(saved),
-      },
-    });
-  } catch (error) {
-    console.error("Medicine save error:", error);
-    return NextResponse.json({ error: "Save failed" }, { status: 500 });
   }
 }

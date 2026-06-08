@@ -34,7 +34,6 @@ export function MedicineSearchInput({
   className,
 }: MedicineSearchInputProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
-  const lastSavedRef = useRef("");
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -96,36 +95,6 @@ export function MedicineSearchInput({
     setOpen(false);
   };
 
-  const saveCustomMedicine = async () => {
-    const name = value.trim().replace(/\s+/g, " ");
-    const medStrength = strength?.trim().replace(/\s+/g, " ") ?? "";
-    if (name.length < 2) return;
-
-    const saveKey = `${name.toLowerCase()}|${medStrength.toLowerCase()}`;
-    if (lastSavedRef.current === saveKey) return;
-
-    const alreadySuggested = results.some(
-      (item) =>
-        medicinePrescriptionName(item).toLowerCase() === name.toLowerCase() &&
-        (item.strength ?? "").toLowerCase() === medStrength.toLowerCase()
-    );
-    if (alreadySuggested) {
-      lastSavedRef.current = saveKey;
-      return;
-    }
-
-    lastSavedRef.current = saveKey;
-    try {
-      await fetch("/api/medicines/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, strength: medStrength }),
-      });
-    } catch {
-      lastSavedRef.current = "";
-    }
-  };
-
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!open || results.length === 0) return;
     if (e.key === "ArrowDown") {
@@ -150,7 +119,6 @@ export function MedicineSearchInput({
         value={value}
         onChange={(e) => onNameChange(e.target.value)}
         onFocus={() => value.trim() && setOpen(true)}
-        onBlur={() => void saveCustomMedicine()}
         onKeyDown={onKeyDown}
         className={cn("pl-9", className)}
         autoComplete="off"
@@ -188,7 +156,7 @@ export function MedicineSearchInput({
             <p className="px-3 py-2 text-xs text-muted-foreground">
               {searchError
                 ? "Could not load suggestions - you can still enter a custom name."
-                : "No matches - this will be saved for next time."}
+                : "No matches - you can still enter a custom name."}
             </p>
           ) : null}
         </div>

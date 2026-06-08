@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAuthDoctorId } from "@/lib/auth";
 import { patientSchema } from "@/lib/validators";
+import { getPatientLabReports } from "@/lib/lab-reports";
 
 export async function GET(
   _request: Request,
@@ -29,7 +30,9 @@ export async function GET(
       return NextResponse.json({ error: "Patient not found" }, { status: 404 });
     }
 
-    return NextResponse.json(patient);
+    const labReports = await getPatientLabReports(patient.id);
+
+    return NextResponse.json({ ...patient, labReports });
   } catch (error) {
     console.error("Patient get error:", error);
     return NextResponse.json(

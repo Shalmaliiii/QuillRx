@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Loader2, Stethoscope, DoorOpen, DoorClosed, Users } from "lucide-react";
+import { Loader2, Stethoscope, DoorOpen, DoorClosed } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { reasonLabel, reasonChipClasses } from "@/lib/queue-options";
@@ -124,37 +124,26 @@ export function QueueStage({
           </div>
 
           <div className="absolute inset-x-4 bottom-[4.5rem] top-16 sm:inset-x-8">
-            {visible.length === 0 && !showExitDoll ? (
-              <div className="flex h-full items-center justify-center pb-10 pr-20 sm:justify-start sm:pb-4 sm:pr-0">
-                <div className="max-w-[13rem] rounded-2xl border border-dashed border-primary/25 bg-background/80 px-4 py-3 text-center shadow-sm backdrop-blur sm:max-w-none sm:text-left dark:bg-card/70 [&>span]:hidden">
-                  <div className="mx-auto mb-2 flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary sm:mx-0">
-                    <Users className="h-4 w-4" />
-                  </div>
-                  <p className="text-sm font-semibold text-foreground">No patients waiting</p>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    New QR check-ins will appear here.
-                  </p>
-                  <span>Queue is empty — waiting for check-ins</span>
-                </div>
-              </div>
-            ) : (
-              visible.map((entry, index) => {
-                const slot = queueSlot(index, occupied);
-                const isFront = index === 0;
-                const isWalking = walkingId === entry.id;
-                return (
-                  <PatientFigure
-                    key={entry.id}
-                    entry={entry}
-                    slot={slot}
-                    isFront={isFront}
-                    isWalking={isWalking}
-                    shuffling={shuffling && index > 0}
-                    idleDelay={index * 0.18}
-                    walkX={slot.right - DOOR_LINE}
-                  />
-                );
-              })
+            {visible.length > 0 && (
+              <>
+                {visible.map((entry, index) => {
+                  const slot = queueSlot(index, occupied);
+                  const isFront = index === 0;
+                  const isWalking = walkingId === entry.id;
+                  return (
+                    <PatientFigure
+                      key={entry.id}
+                      entry={entry}
+                      slot={slot}
+                      isFront={isFront}
+                      isWalking={isWalking}
+                      shuffling={shuffling && index > 0}
+                      idleDelay={index * 0.18}
+                      walkX={slot.right - DOOR_LINE}
+                    />
+                  );
+                })}
+              </>
             )}
             {overflow > 0 && (
               <div
@@ -246,10 +235,12 @@ function PatientFigure({
   idleDelay: number;
   walkX: number;
 }) {
+  const displayName = entry.name.trim().split(/\s+/)[0] || "Patient";
+
   return (
     <div
       className={cn(
-        "absolute bottom-0 flex w-[64px] flex-col items-center transition-[right,opacity,transform] duration-500 ease-out",
+        "absolute bottom-0 flex w-[88px] flex-col items-center transition-[right,opacity,transform] duration-500 ease-out",
         isWalking && "animate-queue-walk",
         shuffling && "animate-queue-shuffle-forward"
       )}
@@ -279,8 +270,11 @@ function PatientFigure({
       </div>
 
       {isFront && !isWalking && (
-        <p className="mt-0.5 max-w-[68px] truncate text-center text-[10px] font-semibold text-foreground">
-          {entry.name.split(" ")[0]}
+        <p
+          className="mt-1 max-w-[7rem] overflow-hidden text-ellipsis whitespace-nowrap rounded-full bg-background/90 px-2 py-0.5 text-center text-[10px] font-semibold text-foreground shadow-sm ring-1 ring-border/70 backdrop-blur"
+          title={entry.name}
+        >
+          {displayName}
         </p>
       )}
     </div>

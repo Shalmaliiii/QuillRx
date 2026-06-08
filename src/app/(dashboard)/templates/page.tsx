@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { PlusCircle, Search, ClipboardList, Pencil, Trash2 } from "lucide-react";
 import { usePageHeader } from "@/contexts/page-header-context";
 import type { PrescriptionTemplateData } from "@/types";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState<PrescriptionTemplateData[]>([]);

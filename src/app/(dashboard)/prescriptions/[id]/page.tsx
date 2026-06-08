@@ -11,13 +11,16 @@ import {
   Send,
   Copy,
   FileText,
+  Loader2,
+  MapPin,
+  Monitor,
   Pill,
   QrCode,
   Printer,
 } from "lucide-react";
 import { format } from "date-fns";
 import { usePageHeader } from "@/contexts/page-header-context";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ConsultationDoneButton } from "@/components/queue/consultation-done-button";
 import type { PrescriptionData, DoctorProfile, PatientData } from "@/types";
 
@@ -38,6 +41,7 @@ export default function PrescriptionDetailPage({
   const [loading, setLoading] = useState(true);
   const [showQR, setShowQR] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [sharingPdf, setSharingPdf] = useState(false);
 
   useEffect(() => {
     fetch(`/api/prescriptions/${id}`)
@@ -56,7 +60,7 @@ export default function PrescriptionDetailPage({
     (typeof window !== "undefined" ? window.location.origin : "");
   const shareUrl = `${appUrl}/api/prescriptions/${id}/pdf`;
 
-  const handleWhatsApp = () => {
+  const openWhatsAppLink = () => {
     if (!prescription) return;
     const phone = prescription.patient.phone.replace(/[^\d]/g, "");
     const phoneWithCountry = phone.startsWith("91") ? phone : `91${phone}`;
@@ -64,6 +68,53 @@ export default function PrescriptionDetailPage({
       `Hello ${prescription.patient.fullName},\n\nYour prescription from ${prescription.doctor.clinicName || "our clinic"} is ready.\n\nDownload here:\n${shareUrl}\n\nTake medicines as advised by the doctor.\n\nRegards,\nDr. ${prescription.doctor.fullName}`
     );
     window.open(`https://wa.me/${phoneWithCountry}?text=${message}`, "_blank");
+  };
+
+  const handleWhatsApp = async () => {
+    if (!prescription) return;
+
+    setSharingPdf(true);
+    try {
+      const res = await fetch(pdfUrl, { cache: "no-store" });
+      if (!res.ok) throw new Error("Could not generate prescription PDF");
+
+      const blob = await res.blob();
+      const safePatientName = prescription.patient.fullName
+        .trim()
+        .replace(/[^a-z0-9]+/gi, "-")
+        .replace(/^-+|-+$/g, "")
+        .toLowerCase();
+      const file = new File(
+        [blob],
+        `prescription-${safePatientName || prescription.id}.pdf`,
+        { type: "application/pdf" }
+      );
+      const text = `Prescription from ${
+        prescription.doctor.clinicName || `Dr. ${prescription.doctor.fullName}`
+      }`;
+      const shareData: ShareData = {
+        title: "Prescription PDF",
+        text,
+        files: [file],
+      };
+
+      if (navigator.canShare?.(shareData)) {
+        await navigator.share(shareData);
+        toast.success("Prescription PDF ready to share");
+        return;
+      }
+
+      openWhatsAppLink();
+      toast.info("Your browser cannot attach PDFs directly, so a WhatsApp link was opened");
+    } catch (error) {
+      if ((error as Error).name === "AbortError") return;
+
+      console.error(error);
+      openWhatsAppLink();
+      toast.error("Could not attach the PDF directly. Opened WhatsApp with the PDF link.");
+    } finally {
+      setSharingPdf(false);
+    }
   };
 
   const handleCopyLink = () => {
@@ -108,12 +159,21 @@ export default function PrescriptionDetailPage({
     return <p className="text-center text-muted-foreground py-12">Prescription not found</p>;
   }
 
+  const consultationModeLabel =
+    prescription.consultationMode === "ONLINE" ? "Online" : "Offline";
+  const ConsultationModeIcon =
+    prescription.consultationMode === "ONLINE" ? Monitor : MapPin;
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Action buttons */}
       <div className="flex flex-wrap gap-3">
-        <Button onClick={handleWhatsApp} className="gap-2">
-          <Send className="h-4 w-4" />
+        <Button onClick={handleWhatsApp} className="gap-2" disabled={sharingPdf}>
+          {sharingPdf ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Send className="h-4 w-4" />
+          )}
           Send on WhatsApp
         </Button>
         <Button variant="outline" onClick={handlePrint} className="gap-2">
@@ -162,7 +222,7 @@ export default function PrescriptionDetailPage({
           <CardTitle className="text-base">Patient Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid sm:grid-cols-3 gap-4 text-sm">
+          <div className="grid sm:grid-cols-4 gap-4 text-sm">
             <div>
               <p className="text-muted-foreground">Name</p>
               <p className="font-medium">{prescription.patient.fullName}</p>
@@ -176,6 +236,13 @@ export default function PrescriptionDetailPage({
             <div>
               <p className="text-muted-foreground">Phone</p>
               <p className="font-medium">{prescription.patient.phone}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Consultation</p>
+              <p className="font-medium inline-flex items-center gap-1.5">
+                <ConsultationModeIcon className="h-4 w-4 text-primary" />
+                {consultationModeLabel}
+              </p>
             </div>
           </div>
         </CardContent>
