@@ -2,12 +2,67 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAuthDoctorId } from "@/lib/auth";
 import { prescriptionSchema } from "@/lib/validators";
+import { buildSearchText, type MedicineCatalogEntry } from "@/lib/medicine-catalog";
 
 type PrescriptionPatientSearchRow = {
   id: string;
   fullName: string;
   phone: string;
 };
+
+type PrescribedMedicine = {
+  name: string;
+  strength?: string | null;
+};
+
+function normalizeMedicineText(value?: string | null) {
+  return (value ?? "").trim().replace(/\s+/g, " ");
+}
+
+async function savePrescribedMedicines(medicines: PrescribedMedicine[]) {
+  const seen = new Set<string>();
+
+  for (const medicine of medicines) {
+    const genericName = normalizeMedicineText(medicine.name);
+    const strength = normalizeMedicineText(medicine.strength) || null;
+    if (genericName.length < 2) continue;
+
+    const key = `${genericName.toLowerCase()}|${(strength ?? "").toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    const matches = await prisma.medicineCatalog.findMany({
+      where: { searchText: { contains: genericName.toLowerCase() } },
+      take: 30,
+    });
+
+    const existing = matches.find((catalogMedicine) => {
+      const sameName =
+        catalogMedicine.genericName.toLowerCase() === genericName.toLowerCase();
+      const sameStrength =
+        (catalogMedicine.strength ?? "").toLowerCase() ===
+        (strength ?? "").toLowerCase();
+      return sameName && sameStrength;
+    });
+
+    if (existing) continue;
+
+    const entry: MedicineCatalogEntry = {
+      genericName,
+      strength,
+      source: "doctor",
+    };
+
+    await prisma.medicineCatalog.create({
+      data: {
+        genericName,
+        strength,
+        source: "doctor",
+        searchText: buildSearchText(entry),
+      },
+    });
+  }
+}
 
 export async function GET(request: Request) {
   try {
@@ -131,6 +186,12 @@ export async function POST(request: Request) {
         },
       },
     });
+
+    try {
+      await savePrescribedMedicines(rest.medicines);
+    } catch (error) {
+      console.error("Medicine catalog save error:", error);
+    }
 
     return NextResponse.json(prescription, { status: 201 });
   } catch (error) {

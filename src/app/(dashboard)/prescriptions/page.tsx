@@ -51,26 +51,29 @@ export default function PrescriptionsPage() {
     });
     if (debouncedSearch) params.set("q", debouncedSearch);
 
-    setLoading(true);
-    fetch(`/api/prescriptions?${params}`, { signal: controller.signal })
-      .then((res) => res.json())
-      .then((data) => {
-        if (!cancelled) {
-          setPrescriptions(data.prescriptions || []);
-          setTotal(data.total || 0);
-        }
-      })
-      .catch((err) => {
-        if (!cancelled && err.name !== "AbortError") {
-          console.error(err);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    const loadTimer = window.setTimeout(() => {
+      setLoading(true);
+      fetch(`/api/prescriptions?${params}`, { signal: controller.signal })
+        .then((res) => res.json())
+        .then((data) => {
+          if (!cancelled) {
+            setPrescriptions(data.prescriptions || []);
+            setTotal(data.total || 0);
+          }
+        })
+        .catch((err) => {
+          if (!cancelled && err.name !== "AbortError") {
+            console.error(err);
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    }, 0);
 
     return () => {
       cancelled = true;
+      window.clearTimeout(loadTimer);
       controller.abort();
     };
   }, [page, debouncedSearch]);
@@ -116,9 +119,9 @@ export default function PrescriptionsPage() {
         </Card>
       ) : (
         <>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {prescriptions.map((rx) => (
-              <Link key={rx.id} href={`/prescriptions/${rx.id}`}>
+              <Link key={rx.id} href={`/prescriptions/${rx.id}`} className="block">
                 <Card className="hover:shadow-md transition-shadow cursor-pointer">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between gap-4">

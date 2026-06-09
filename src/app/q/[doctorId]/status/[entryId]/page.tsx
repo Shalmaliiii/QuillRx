@@ -1,11 +1,26 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
-import { Loader2, CheckCircle2, Stethoscope, Clock, XCircle } from "lucide-react";
+import {
+  Loader2,
+  CheckCircle2,
+  Stethoscope,
+  Clock,
+  XCircle,
+  Upload,
+  FileText,
+  ExternalLink,
+} from "lucide-react";
 import { PillLogo } from "@/components/layout/pill-logo";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { LabReportFilePicker } from "@/components/queue/lab-report-file-picker";
 import { reasonLabel, formatWaitMinutes } from "@/lib/queue-options";
-import type { QueueStatus } from "@/types";
+import { toast } from "@/lib/toast";
+import type { LabReportData, QueueStatus } from "@/types";
 
 interface StatusData {
   id: string;
@@ -24,8 +39,18 @@ export default function QueueStatusPage() {
   const entryId = params.entryId;
 
   const [data, setData] = useState<StatusData | null>(null);
+  const [reports, setReports] = useState<LabReportData[]>([]);
+  const [uploadingReport, setUploadingReport] = useState(false);
+  const [reportTitle, setReportTitle] = useState("");
+  const [reportNotes, setReportNotes] = useState("");
+  const [selectedReportFiles, setSelectedReportFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(true);
   const [gone, setGone] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const previousStatusRef = useRef<{
+    status: QueueStatus;
+    peopleAhead: number;
+  } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -44,11 +69,104 @@ export default function QueueStatusPage() {
     }
   }, [entryId]);
 
+  const loadReports = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/public/queue/${entryId}/lab-reports`, {
+        cache: "no-store",
+      });
+      if (!res.ok) return;
+      const payload = await res.json();
+      setReports(payload.reports ?? []);
+    } catch {
+      // keep the last visible report list on transient errors
+    }
+  }, [entryId]);
+
   useEffect(() => {
-    load();
-    const t = setInterval(load, 5000);
-    return () => clearInterval(t);
-  }, [load]);
+    const initialLoad = window.setTimeout(() => {
+      void load();
+      void loadReports();
+    }, 0);
+    const poll = window.setInterval(() => {
+      void load();
+    }, 5000);
+
+    return () => {
+      window.clearTimeout(initialLoad);
+      window.clearInterval(poll);
+    };
+  }, [load, loadReports]);
+
+  const submitLabReport = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    const file = selectedReportFiles[0] ?? null;
+    if (!file) {
+      toast.error("Please choose a lab report file");
+      return;
+    }
+
+    setUploadingReport(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("title", reportTitle.trim());
+      formData.append("notes", reportNotes.trim());
+
+      const res = await fetch(`/api/public/queue/${entryId}/lab-reports`, {
+        method: "POST",
+        body: formData,
+      });
+      const payload = await res.json();
+      if (!res.ok) {
+        throw new Error(payload.error || "Could not upload lab report");
+      }
+
+      setReports((prev) => [payload.report, ...prev]);
+      setReportTitle("");
+      setReportNotes("");
+      setSelectedReportFiles([]);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      toast.success("Lab report submitted");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not upload lab report"
+      );
+    } finally {
+      setUploadingReport(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!data) return;
+
+    const previous = previousStatusRef.current;
+    if (!previous) {
+      previousStatusRef.current = {
+        status: data.status,
+        peopleAhead: data.peopleAhead,
+      };
+      return;
+    }
+
+    const becameNext =
+      data.status === "WAITING" &&
+      data.peopleAhead === 0 &&
+      (previous.status !== "WAITING" || previous.peopleAhead > 0);
+    const calledIn =
+      data.status === "IN_PROGRESS" && previous.status !== "IN_PROGRESS";
+
+    if (calledIn) {
+      notifyPatient("turn");
+    } else if (becameNext) {
+      notifyPatient("next");
+    }
+
+    previousStatusRef.current = {
+      status: data.status,
+      peopleAhead: data.peopleAhead,
+    };
+  }, [data]);
 
   if (loading) {
     return (
@@ -69,6 +187,9 @@ export default function QueueStatusPage() {
       </div>
     );
   }
+
+  const canSubmitReports =
+    data.status === "WAITING" || data.status === "IN_PROGRESS";
 
   return (
     <div className="flex min-h-screen flex-col items-center bg-muted/30 px-5 py-10">
@@ -102,6 +223,84 @@ export default function QueueStatusPage() {
         Keep this page open — it updates automatically. Please stay nearby; you
         may be called shortly.
       </p>
+
+      <div className="mt-6 w-full max-w-sm rounded-2xl border bg-card p-5 shadow-sm">
+        <div className="mb-4">
+          <h2 className="text-base font-semibold">Lab reports</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Upload PDFs or images so the doctor can review them before your turn.
+          </p>
+        </div>
+
+        {canSubmitReports ? (
+          <form onSubmit={submitLabReport} className="space-y-3">
+            <LabReportFilePicker
+              inputRef={fileInputRef}
+              id="report-file"
+              disabled={uploadingReport}
+              selectedFiles={selectedReportFiles}
+              onFilesChange={setSelectedReportFiles}
+            />
+            <div className="space-y-1.5">
+              <Label htmlFor="report-title">Name</Label>
+              <Input
+                id="report-title"
+                value={reportTitle}
+                onChange={(event) => setReportTitle(event.target.value)}
+                placeholder="e.g. Blood test, X-ray"
+                disabled={uploadingReport}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="report-notes">Notes (optional)</Label>
+              <Textarea
+                id="report-notes"
+                value={reportNotes}
+                onChange={(event) => setReportNotes(event.target.value)}
+                placeholder="Anything the doctor should notice"
+                rows={2}
+                disabled={uploadingReport}
+              />
+            </div>
+            <Button type="submit" className="w-full gap-2" disabled={uploadingReport}>
+              {uploadingReport ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Upload className="h-4 w-4" />
+              )}
+              Submit report
+            </Button>
+          </form>
+        ) : (
+          <div className="rounded-xl border bg-muted/40 p-3 text-sm text-muted-foreground">
+            This visit is closed, so new lab reports cannot be submitted here.
+          </div>
+        )}
+
+        {reports.length > 0 && (
+          <div className="mt-5 space-y-2 border-t pt-4">
+            {reports.map((report) => (
+              <a
+                key={report.id}
+                href={report.fileUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-between gap-3 rounded-xl border bg-muted/40 px-3 py-2 text-left transition-colors hover:bg-muted"
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <FileText className="h-4 w-4 shrink-0 text-primary" />
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium">
+                      {report.title}
+                    </span>
+                  </span>
+                </span>
+                <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -175,4 +374,61 @@ function StatusBlock({
       )}
     </div>
   );
+}
+
+type QueueAlertKind = "next" | "turn";
+
+type WindowWithLegacyAudio = Window &
+  typeof globalThis & {
+    webkitAudioContext?: typeof AudioContext;
+  };
+
+function notifyPatient(kind: QueueAlertKind) {
+  if (typeof window === "undefined") return;
+
+  if ("vibrate" in navigator) {
+    navigator.vibrate(kind === "turn" ? [180, 80, 180] : [120, 60, 120]);
+  }
+
+  void playQueueChime(kind);
+}
+
+async function playQueueChime(kind: QueueAlertKind) {
+  try {
+    const AudioContextConstructor =
+      window.AudioContext ??
+      (window as WindowWithLegacyAudio).webkitAudioContext;
+
+    if (!AudioContextConstructor) return;
+
+    const audioContext = new AudioContextConstructor();
+    if (audioContext.state === "suspended") {
+      await audioContext.resume();
+    }
+
+    const now = audioContext.currentTime;
+    const gain = audioContext.createGain();
+    const notes = kind === "turn" ? [784, 1046] : [660, 880];
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.08, now + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
+    gain.connect(audioContext.destination);
+
+    notes.forEach((frequency, index) => {
+      const oscillator = audioContext.createOscillator();
+      const start = now + index * 0.13;
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(frequency, start);
+      oscillator.connect(gain);
+      oscillator.start(start);
+      oscillator.stop(start + 0.2);
+    });
+
+    window.setTimeout(() => {
+      void audioContext.close();
+    }, 700);
+  } catch {
+    // Mobile browsers may block sound until the page has user interaction.
+  }
 }

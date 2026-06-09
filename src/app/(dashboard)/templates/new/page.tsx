@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { TemplateForm } from "@/components/templates/template-form";
 import { usePageHeader } from "@/contexts/page-header-context";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 export default function NewTemplatePage() {
   const router = useRouter();

@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { TemplateForm } from "@/components/templates/template-form";
 import { usePageHeader } from "@/contexts/page-header-context";
 import type { PrescriptionTemplateData } from "@/types";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Loader2 } from "lucide-react";
 
 export default function EditTemplatePage() {

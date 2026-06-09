@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { QueueEntryData } from "@/types";
 
 export interface QueueNotificationItem {
@@ -110,9 +110,16 @@ export function QueueNotificationsProvider({ children }: { children: ReactNode }
   }, [pushNotification]);
 
   useEffect(() => {
-    poll();
-    const t = setInterval(poll, POLL_MS);
-    return () => clearInterval(t);
+    const initialPoll = window.setTimeout(() => {
+      void poll();
+    }, 0);
+    const t = window.setInterval(() => {
+      void poll();
+    }, POLL_MS);
+    return () => {
+      window.clearTimeout(initialPoll);
+      window.clearInterval(t);
+    };
   }, [poll]);
 
   const markAllRead = useCallback(() => {

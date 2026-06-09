@@ -69,6 +69,7 @@ export const prescriptionSchema = z.object({
   labTests: z.string().optional(),
   advice: z.string().optional(),
   followUpDate: z.string().optional(),
+  consultationMode: z.enum(["ONLINE", "OFFLINE"]).default("OFFLINE"),
   consultationFee: z.coerce.number().min(0).default(0),
   additionalCharges: z.coerce.number().min(0).default(0),
   discount: z.coerce.number().min(0).default(0),

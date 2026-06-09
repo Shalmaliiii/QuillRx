@@ -1,7 +1,7 @@
 "use client";
 
 import { formatDistanceToNow } from "date-fns";
-import { Loader2, UserX, Users } from "lucide-react";
+import { FileText, Loader2, UserX, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { reasonLabel, reasonChipClasses } from "@/lib/queue-options";
@@ -56,6 +56,13 @@ function WaitingPatientCard({
           {isNext && (
             <p className="mt-1.5 text-xs text-muted-foreground">
               Joined {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true })}
+            </p>
+          )}
+          {(entry.labReports?.length ?? 0) > 0 && (
+            <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+              <FileText className="h-3.5 w-3.5" />
+              {entry.labReports?.length} lab report
+              {entry.labReports?.length === 1 ? "" : "s"}
             </p>
           )}
         </div>

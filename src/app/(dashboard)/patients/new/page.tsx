@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2 } from "lucide-react";
 import { patientSchema, type PatientInput } from "@/lib/validators";
 import { usePageHeader } from "@/contexts/page-header-context";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 export default function NewPatientPage() {
   const router = useRouter();

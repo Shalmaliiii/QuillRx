@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAuthDoctorId } from "@/lib/auth";
 import {
-  buildSearchText,
   medicineDisplayName,
   type MedicineCatalogEntry,
 } from "@/lib/medicine-catalog";
@@ -90,25 +89,16 @@ export async function GET(request: Request) {
           continue;
         }
 
-        const cached = await prisma.medicineCatalog.create({
-          data: {
-            genericName: entry.genericName,
-            rxCui: entry.rxCui,
-            source: "rxnorm",
-            searchText: buildSearchText(entry),
-          },
-        });
-
         merged.push({
-          id: cached.id,
-          genericName: cached.genericName,
-          brandName: cached.brandName,
-          strength: cached.strength,
-          form: cached.form,
-          rxCui: cached.rxCui,
-          source: cached.source,
-          isEssential: cached.isEssential,
-          displayName: medicineDisplayName(cached),
+          id: `rxnorm:${entry.rxCui ?? entry.genericName}`,
+          genericName: entry.genericName,
+          brandName: null,
+          strength: null,
+          form: null,
+          rxCui: entry.rxCui,
+          source: "rxnorm",
+          isEssential: false,
+          displayName: medicineDisplayName(entry),
         });
 
         if (merged.length >= LOCAL_LIMIT + RXNORM_LIMIT) break;

@@ -29,7 +29,7 @@ export async function GET(
 
     const estimatedWaitMinutes =
       entry.status === "WAITING"
-        ? await estimateWaitMinutes(entry.doctorId, ahead)
+        ? await estimateWaitMinutes(entry.doctorId, ahead, entry.createdAt)
         : null;
 
     return NextResponse.json({

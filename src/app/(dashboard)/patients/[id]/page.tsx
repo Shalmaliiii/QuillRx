@@ -32,6 +32,7 @@ import {
   Droplet,
   ArrowUpDown,
   Pill,
+  ExternalLink,
 } from "lucide-react";
 import { usePageHeader } from "@/contexts/page-header-context";
 import { format } from "date-fns";
@@ -44,7 +45,7 @@ import {
   severityChipClasses,
   buildVisitSymptoms,
 } from "@/lib/queue-options";
-import type { QueueEntryData } from "@/types";
+import type { LabReportData, QueueEntryData } from "@/types";
 import { ConsultationDoneButton } from "@/components/queue/consultation-done-button";
 
 interface Prescription {
@@ -71,6 +72,7 @@ interface PatientDetail {
   existingConditions: string | null;
   createdAt: string;
   prescriptions: Prescription[];
+  labReports: LabReportData[];
 }
 
 type SortKey = "newest" | "oldest";
@@ -82,6 +84,14 @@ const SORT_LABELS: Record<SortKey, string> = {
 
 const cleanCondition = (value: string | null) =>
   value && value !== "DEMO_SEED" ? value : null;
+
+const formatFileSize = (bytes: number) => {
+  if (bytes < 1024) return `${bytes} B`;
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${kb.toFixed(kb >= 100 ? 0 : 1)} KB`;
+  const mb = kb / 1024;
+  return `${mb.toFixed(mb >= 10 ? 1 : 2)} MB`;
+};
 
 export default function PatientDetailPage({
   params,
@@ -128,7 +138,19 @@ export default function PatientDetailPage({
     backHref: fromQueue ? "/queue" : "/patients",
   });
 
-  const prescriptions = patient?.prescriptions ?? [];
+  const prescriptions = useMemo(
+    () => patient?.prescriptions ?? [],
+    [patient?.prescriptions]
+  );
+  const labReports = useMemo(() => {
+    const byId = new Map<string, LabReportData>();
+    patient?.labReports?.forEach((report) => byId.set(report.id, report));
+    visit?.labReports?.forEach((report) => byId.set(report.id, report));
+
+    return Array.from(byId.values()).sort(
+      (a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)
+    );
+  }, [patient?.labReports, visit?.labReports]);
 
   const sorted = useMemo(() => {
     const arr = [...prescriptions];
@@ -281,6 +303,53 @@ export default function PatientDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      {labReports.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <FileText className="h-4 w-4 text-primary" />
+              Lab Reports
+              <span className="text-sm font-normal text-muted-foreground">
+                {labReports.length}
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {labReports.map((report) => (
+                <a
+                  key={report.id}
+                  href={report.fileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="group rounded-lg border p-3 transition-colors hover:bg-accent/50"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">
+                        {report.title}
+                      </p>
+                      <p className="mt-1 truncate text-xs text-muted-foreground">
+                        {formatFileSize(report.fileSize)}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Submitted {format(new Date(report.createdAt), "d MMM yyyy, h:mm a")}
+                      </p>
+                      {report.notes && (
+                        <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
+                          {report.notes}
+                        </p>
+                      )}
+                    </div>
+                    <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
+                  </div>
+                </a>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Visit history (consolidated + scrollable + sortable) */}
       <Card>

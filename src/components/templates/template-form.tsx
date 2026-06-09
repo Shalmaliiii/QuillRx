@@ -12,7 +12,7 @@ import { Loader2, PlusCircle, Trash2 } from "lucide-react";
 import { MedicineSearchInput } from "@/components/medicines/medicine-search-input";
 import { emptyMedicine, templateToApiBody } from "@/lib/prescription-template";
 import type { MedicineData } from "@/types";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 type TemplateFormProps = {
   initial?: {

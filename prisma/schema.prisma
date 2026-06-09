@@ -28,6 +28,7 @@ model Doctor {
   prescriptions         Prescription[]
   queueEntries          QueueEntry[]
   prescriptionTemplates PrescriptionTemplate[]
+  labReports            LabReport[]
 }
 
 enum QueueStatus {
@@ -58,6 +59,7 @@ model QueueEntry {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   doctor      Doctor      @relation(fields: [doctorId], references: [id])
+  labReports  LabReport[]
 
   @@index([doctorId, status])
   @@index([doctorId, createdAt])
@@ -79,9 +81,35 @@ model Patient {
   updatedAt          DateTime       @updatedAt
   doctor             Doctor         @relation(fields: [doctorId], references: [id])
   prescriptions      Prescription[]
+  labReports         LabReport[]
 
   @@index([doctorId])
   @@index([phone])
+}
+
+model LabReport {
+  id               String      @id @default(auto()) @map("_id") @db.ObjectId
+  doctorId         String      @db.ObjectId
+  patientId        String?     @db.ObjectId
+  queueEntryId     String?     @db.ObjectId
+  title            String
+  notes            String?
+  fileUrl          String
+  fileName         String
+  fileType         String
+  fileSize         Int
+  submittedByName  String?
+  submittedByPhone String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  doctor           Doctor      @relation(fields: [doctorId], references: [id])
+  patient          Patient?    @relation(fields: [patientId], references: [id])
+  queueEntry       QueueEntry? @relation(fields: [queueEntryId], references: [id])
+
+  @@index([doctorId])
+  @@index([patientId])
+  @@index([queueEntryId])
+  @@index([doctorId, createdAt])
 }
 
 type Vital {
@@ -113,6 +141,7 @@ model Prescription {
   labTests          String?
   advice            String?
   followUpDate      DateTime?
+  consultationMode  String?    @default("OFFLINE")
   consultationFee   Float?     @default(0)
   additionalCharges Float?     @default(0)
   discount          Float?     @default(0)

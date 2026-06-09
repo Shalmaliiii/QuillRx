@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -12,7 +12,7 @@ import {
   UserX,
   FileText,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -62,10 +62,19 @@ export default function QueuePage() {
   }, []);
 
   useEffect(() => {
-    load();
-    if (pollPaused) return;
-    const t = setInterval(load, 5000);
-    return () => clearInterval(t);
+    const initialLoad = window.setTimeout(() => {
+      void load();
+    }, 0);
+    if (pollPaused) {
+      return () => window.clearTimeout(initialLoad);
+    }
+    const t = window.setInterval(() => {
+      void load();
+    }, 5000);
+    return () => {
+      window.clearTimeout(initialLoad);
+      window.clearInterval(t);
+    };
   }, [load, pollPaused]);
 
   const updateStatus = async (id: string, status: QueueStatus) => {
@@ -137,17 +146,34 @@ export default function QueuePage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
       router.push(`/patients/${json.patientId}?queueEntryId=${entry.id}`);
-    } catch {
-      toast.error("Could not start the consultation");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not start the consultation"
+      );
       setBusyId(null);
     }
   };
 
-  const entries = data?.entries ?? [];
-  const inProgress = entries.filter((e) => e.status === "IN_PROGRESS");
-  const waiting = entries.filter((e) => e.status === "WAITING");
-  const finished = entries.filter(
-    (e) => e.status === "DONE" || e.status === "NO_SHOW" || e.status === "CANCELLED"
+  const entries = useMemo(() => data?.entries ?? [], [data?.entries]);
+  const inProgress = useMemo(
+    () => entries.filter((e) => e.status === "IN_PROGRESS"),
+    [entries]
+  );
+  const waiting = useMemo(
+    () => entries.filter((e) => e.status === "WAITING"),
+    [entries]
+  );
+  const finished = useMemo(
+    () =>
+      entries.filter(
+        (e) =>
+          e.status === "DONE" ||
+          e.status === "NO_SHOW" ||
+          e.status === "CANCELLED"
+      ),
+    [entries]
   );
 
   useEffect(() => {

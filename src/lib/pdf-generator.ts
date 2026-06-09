@@ -264,9 +264,11 @@ export async function generatePrescriptionPDF(
 
     // Date + time, right aligned.
     const dr = width - margin - 14;
+    const consultationMode =
+      prescription.consultationMode === "ONLINE" ? "Online" : "Offline";
     rightText("DATE", dr, y - 15, 7, helveticaBold, accent);
     rightText(dateStr, dr, y - 31, 11.5, helveticaBold, textDark);
-    rightText(timeStr, dr, y - 46, 9, helvetica, textMuted);
+    rightText(`${timeStr} - ${consultationMode}`, dr, y - 46, 9, helvetica, textMuted);
 
     y -= cardH + 20;
   }

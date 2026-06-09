@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,16 +11,76 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import {
   Loader2,
+  MapPin,
+  Monitor,
   PlusCircle,
   Trash2,
   Search,
+  UserPlus,
+  X,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { usePageHeader } from "@/contexts/page-header-context";
 import { MedicineSearchInput } from "@/components/medicines/medicine-search-input";
 import { TemplatePicker } from "@/components/templates/template-picker";
 import type { TemplateFormValues } from "@/lib/prescription-template";
 import type { PatientData, MedicineData } from "@/types";
+import { format } from "date-fns";
+
+type VitalsState = {
+  bp: string;
+  temperature: string;
+  weight: string;
+  pulse: string;
+};
+
+type VitalField = keyof VitalsState;
+type ConsultationMode = "OFFLINE" | "ONLINE";
+type PatientGender = "Male" | "Female" | "Other";
+
+type NewPatientForm = {
+  fullName: string;
+  phone: string;
+  age: string;
+  gender: PatientGender;
+  weight: string;
+  bp: string;
+  diabetesStatus: string;
+  allergies: string;
+  existingConditions: string;
+};
+
+type LatestPrescriptionVitals = {
+  createdAt: string;
+  vitals: Partial<Record<VitalField, string | null>> | null;
+};
+
+const emptyVitals: VitalsState = {
+  bp: "",
+  temperature: "",
+  weight: "",
+  pulse: "",
+};
+
+const emptyNewPatientForm: NewPatientForm = {
+  fullName: "",
+  phone: "",
+  age: "",
+  gender: "Male",
+  weight: "",
+  bp: "",
+  diabetesStatus: "",
+  allergies: "",
+  existingConditions: "",
+};
+
+const vitalFields: VitalField[] = ["bp", "temperature", "weight", "pulse"];
+const vitalUnits: Record<VitalField, string> = {
+  bp: "mmHg",
+  temperature: "\u00b0F",
+  weight: "kg",
+  pulse: "bpm",
+};
 
 const emptyMedicine: MedicineData = {
   name: "",
@@ -47,10 +107,24 @@ export default function NewPrescriptionPage() {
   const [searchResults, setSearchResults] = useState<PatientData[]>([]);
   const [searching, setSearching] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<PatientData | null>(null);
+  const [showNewPatientForm, setShowNewPatientForm] = useState(false);
+  const [creatingPatient, setCreatingPatient] = useState(false);
+  const [newPatient, setNewPatient] = useState<NewPatientForm>({
+    ...emptyNewPatientForm,
+  });
 
   const [symptoms, setSymptoms] = useState("");
   const [diagnosis, setDiagnosis] = useState("");
-  const [vitals, setVitals] = useState({ bp: "", temperature: "", weight: "", pulse: "" });
+  const [consultationMode, setConsultationMode] =
+    useState<ConsultationMode>("OFFLINE");
+  const [vitals, setVitals] = useState<VitalsState>({ ...emptyVitals });
+  const [vitalHistoryLabels, setVitalHistoryLabels] = useState<
+    Partial<Record<VitalField, string>>
+  >({});
+  const [lastVitals, setLastVitals] = useState<VitalsState | null>(null);
+  const [lastVitalsDate, setLastVitalsDate] = useState<string | null>(null);
+  const vitalsRef = useRef<VitalsState>({ ...emptyVitals });
+  const autoFilledVitalsRef = useRef<Set<VitalField>>(new Set());
   const [medicines, setMedicines] = useState<MedicineData[]>([{ ...emptyMedicine }]);
   const [labTests, setLabTests] = useState("");
   const [advice, setAdvice] = useState("");
@@ -73,6 +147,50 @@ export default function NewPrescriptionPage() {
       (parseFloat(discount) || 0)
   );
 
+  const updateVital = (field: VitalField, value: string) => {
+    autoFilledVitalsRef.current.delete(field);
+    setVitalHistoryLabels((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    setVitals((prev) => {
+      const next = { ...prev, [field]: value };
+      vitalsRef.current = next;
+      return next;
+    });
+  };
+
+  const vitalHint = (field: VitalField) =>
+    vitalHistoryLabels[field] ? (
+      <span className="text-[10px] font-normal text-muted-foreground">
+        {vitalHistoryLabels[field]}
+      </span>
+    ) : null;
+
+  const reuseLastVitals = () => {
+    if (!lastVitals || !lastVitalsDate) return;
+
+    const nextVitals = { ...vitalsRef.current };
+    const nextLabels: Partial<Record<VitalField, string>> = {};
+    const filledFields = new Set<VitalField>();
+
+    for (const field of vitalFields) {
+      const previousValue = lastVitals[field].trim();
+      if (!previousValue) continue;
+
+      nextVitals[field] = previousValue;
+      nextLabels[field] = lastVitalsDate;
+      filledFields.add(field);
+    }
+
+    autoFilledVitalsRef.current = filledFields;
+    vitalsRef.current = nextVitals;
+    setVitals(nextVitals);
+    setVitalHistoryLabels(nextLabels);
+  };
+
   useEffect(() => {
     if (preselectedPatientId) {
       fetch(`/api/patients/${preselectedPatientId}`)
@@ -83,10 +201,103 @@ export default function NewPrescriptionPage() {
   }, [preselectedPatientId]);
 
   useEffect(() => {
-    if (prefilledSymptoms) {
+    if (!prefilledSymptoms) return;
+
+    const timer = window.setTimeout(() => {
       setSymptoms((prev) => prev || prefilledSymptoms);
-    }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [prefilledSymptoms]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const patientId = selectedPatient?.id;
+
+    const timer = window.setTimeout(async () => {
+      const previouslyAutoFilled = new Set(autoFilledVitalsRef.current);
+      autoFilledVitalsRef.current.clear();
+      setVitalHistoryLabels({});
+      setLastVitals(null);
+      setLastVitalsDate(null);
+
+      if (previouslyAutoFilled.size > 0) {
+        const nextVitals = { ...vitalsRef.current };
+        previouslyAutoFilled.forEach((field) => {
+          nextVitals[field] = "";
+        });
+        vitalsRef.current = nextVitals;
+        setVitals(nextVitals);
+      }
+
+      if (!patientId) return;
+
+      try {
+        const params = new URLSearchParams({
+          patientId,
+          limit: "1",
+        });
+        const res = await fetch(`/api/prescriptions?${params}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const latest = data.prescriptions?.[0] as
+          | LatestPrescriptionVitals
+          | undefined;
+        if (!latest?.vitals) return;
+
+        const label = `Last recorded on ${format(
+          new Date(latest.createdAt),
+          "d MMM yyyy"
+        )}`;
+        const previousVitals: VitalsState = {
+          bp: latest.vitals.bp?.trim() ?? "",
+          temperature: latest.vitals.temperature?.trim() ?? "",
+          weight: latest.vitals.weight?.trim() ?? "",
+          pulse: latest.vitals.pulse?.trim() ?? "",
+        };
+        const hasPreviousVitals = vitalFields.some(
+          (field) => previousVitals[field].length > 0
+        );
+        if (hasPreviousVitals) {
+          setLastVitals(previousVitals);
+          setLastVitalsDate(label);
+        }
+
+        const nextLabels: Partial<Record<VitalField, string>> = {};
+        const filledFields = new Set<VitalField>();
+        const nextVitals = { ...vitalsRef.current };
+
+        for (const field of vitalFields) {
+          const previousValue = previousVitals[field];
+          if (!previousValue || nextVitals[field].trim()) continue;
+
+          nextVitals[field] = previousValue;
+          nextLabels[field] = label;
+          filledFields.add(field);
+        }
+
+        autoFilledVitalsRef.current = filledFields;
+        if (filledFields.size > 0) {
+          vitalsRef.current = nextVitals;
+          setVitals(nextVitals);
+        }
+        setVitalHistoryLabels(nextLabels);
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          console.error(error);
+        }
+      }
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [selectedPatient?.id]);
 
   const searchPatients = useCallback(async (q: string) => {
     if (q.length < 2) {
@@ -105,10 +316,99 @@ export default function NewPrescriptionPage() {
     }
   }, []);
 
+  const updateNewPatient = <K extends keyof NewPatientForm>(
+    field: K,
+    value: NewPatientForm[K]
+  ) => {
+    setNewPatient((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const openNewPatientForm = () => {
+    setShowNewPatientForm(true);
+    setSearchResults([]);
+
+    const query = searchQuery.trim();
+    if (!query) return;
+
+    setNewPatient((prev) => {
+      const next = { ...prev };
+      const looksLikePhone = /^[+\d\s()-]+$/.test(query);
+
+      if (looksLikePhone && !next.phone.trim()) {
+        next.phone = query;
+      } else if (!looksLikePhone && !next.fullName.trim()) {
+        next.fullName = query;
+      }
+
+      return next;
+    });
+  };
+
+  const createPatient = async () => {
+    const fullName = newPatient.fullName.trim();
+    const phone = newPatient.phone.trim();
+    const age = Number(newPatient.age);
+
+    if (fullName.length < 2) {
+      toast.error("Patient name is required");
+      return;
+    }
+    if (phone.length < 10) {
+      toast.error("Valid phone number is required");
+      return;
+    }
+    if (!Number.isFinite(age) || age < 0 || age > 150) {
+      toast.error("Valid age is required");
+      return;
+    }
+
+    setCreatingPatient(true);
+    try {
+      const res = await fetch("/api/patients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName,
+          phone,
+          age,
+          gender: newPatient.gender,
+          weight: newPatient.weight.trim() || undefined,
+          bp: newPatient.bp.trim() || undefined,
+          diabetesStatus: newPatient.diabetesStatus || undefined,
+          allergies: newPatient.allergies.trim() || undefined,
+          existingConditions: newPatient.existingConditions.trim() || undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to add patient");
+      }
+
+      const patient = (await res.json()) as PatientData;
+      setSelectedPatient(patient);
+      setSearchQuery("");
+      setSearchResults([]);
+      setShowNewPatientForm(false);
+      setNewPatient({ ...emptyNewPatientForm });
+      toast.success("Patient added and selected");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to add patient");
+    } finally {
+      setCreatingPatient(false);
+    }
+  };
+
   useEffect(() => {
+    if (showNewPatientForm) {
+      setSearchResults([]);
+      setSearching(false);
+      return;
+    }
+
     const timer = setTimeout(() => searchPatients(searchQuery), 300);
     return () => clearTimeout(timer);
-  }, [searchQuery, searchPatients]);
+  }, [searchQuery, searchPatients, showNewPatientForm]);
 
   const addMedicine = () => {
     setMedicines((prev) => [...prev, { ...emptyMedicine }]);
@@ -144,7 +444,7 @@ export default function NewPrescriptionPage() {
     );
   };
 
-  const applyTemplate = (values: Partial<TemplateFormValues>, _name: string) => {
+  const applyTemplate = (values: Partial<TemplateFormValues>) => {
     if (values.diagnosis != null) setDiagnosis(values.diagnosis);
     if (values.medicines) setMedicines(values.medicines);
     if (values.labTests != null) setLabTests(values.labTests);
@@ -175,6 +475,7 @@ export default function NewPrescriptionPage() {
         labTests: labTests || undefined,
         advice: advice || undefined,
         followUpDate: followUpDate || undefined,
+        consultationMode,
         consultationFee: parseFloat(consultationFee) || 0,
         additionalCharges: additionalTotal,
         discount: parseFloat(discount) || 0,
@@ -230,6 +531,7 @@ export default function NewPrescriptionPage() {
                   onClick={() => {
                     setSelectedPatient(null);
                     setSearchQuery("");
+                    setShowNewPatientForm(false);
                   }}
                 >
                   Change
@@ -237,14 +539,35 @@ export default function NewPrescriptionPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search patient by name or phone..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 h-11"
-                  />
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <div className="relative min-w-0 flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search patient by name or phone..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 h-11"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant={showNewPatientForm ? "secondary" : "outline"}
+                    className="h-11 shrink-0 gap-2"
+                    onClick={() => {
+                      if (showNewPatientForm) {
+                        setShowNewPatientForm(false);
+                      } else {
+                        openNewPatientForm();
+                      }
+                    }}
+                  >
+                    {showNewPatientForm ? (
+                      <X className="h-4 w-4" />
+                    ) : (
+                      <UserPlus className="h-4 w-4" />
+                    )}
+                    {showNewPatientForm ? "Cancel" : "New patient"}
+                  </Button>
                 </div>
                 {searching && <p className="text-sm text-muted-foreground">Searching...</p>}
                 {searchResults.length > 0 && (
@@ -268,33 +591,205 @@ export default function NewPrescriptionPage() {
                     ))}
                   </div>
                 )}
+                {showNewPatientForm && (
+                  <div className="rounded-lg border bg-muted/20 p-4 space-y-4">
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Full Name *</Label>
+                        <Input
+                          placeholder="Patient name"
+                          value={newPatient.fullName}
+                          onChange={(e) => updateNewPatient("fullName", e.target.value)}
+                          className="h-10"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Phone *</Label>
+                        <Input
+                          placeholder="+91 98765 43210"
+                          value={newPatient.phone}
+                          onChange={(e) => updateNewPatient("phone", e.target.value)}
+                          className="h-10"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Age *</Label>
+                        <Input
+                          type="number"
+                          placeholder="Age"
+                          value={newPatient.age}
+                          onChange={(e) => updateNewPatient("age", e.target.value)}
+                          className="h-10"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Gender *</Label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {(["Male", "Female", "Other"] as PatientGender[]).map(
+                            (gender) => (
+                              <Button
+                                key={gender}
+                                type="button"
+                                variant={
+                                  newPatient.gender === gender ? "default" : "outline"
+                                }
+                                size="sm"
+                                className="h-10 px-2"
+                                onClick={() => updateNewPatient("gender", gender)}
+                              >
+                                {gender}
+                              </Button>
+                            )
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Weight</Label>
+                        <Input
+                          placeholder="e.g. 70 kg"
+                          value={newPatient.weight}
+                          onChange={(e) => updateNewPatient("weight", e.target.value)}
+                          className="h-10"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Blood Pressure</Label>
+                        <Input
+                          placeholder="e.g. 120/80"
+                          value={newPatient.bp}
+                          onChange={(e) => updateNewPatient("bp", e.target.value)}
+                          className="h-10"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Allergies</Label>
+                      <Textarea
+                        placeholder="Known allergies..."
+                        value={newPatient.allergies}
+                        onChange={(e) => updateNewPatient("allergies", e.target.value)}
+                        rows={2}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Existing Conditions</Label>
+                      <Textarea
+                        placeholder="Existing medical conditions..."
+                        value={newPatient.existingConditions}
+                        onChange={(e) =>
+                          updateNewPatient("existingConditions", e.target.value)
+                        }
+                        rows={2}
+                      />
+                    </div>
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        onClick={createPatient}
+                        disabled={creatingPatient}
+                        className="gap-2"
+                      >
+                        {creatingPatient ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <UserPlus className="h-4 w-4" />
+                        )}
+                        Add and select patient
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Vitals */}
+        {/* Consultation Mode */}
         <Card>
           <CardHeader>
+            <CardTitle className="text-base">Consultation</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                type="button"
+                variant={consultationMode === "OFFLINE" ? "default" : "outline"}
+                className="h-14 justify-start gap-3 px-4"
+                onClick={() => setConsultationMode("OFFLINE")}
+              >
+                <MapPin className="h-4 w-4" />
+                Offline
+              </Button>
+              <Button
+                type="button"
+                variant={consultationMode === "ONLINE" ? "default" : "outline"}
+                className="h-14 justify-start gap-3 px-4"
+                onClick={() => setConsultationMode("ONLINE")}
+              >
+                <Monitor className="h-4 w-4" />
+                Online
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Vitals */}
+        <Card>
+          <CardHeader className="flex flex-row items-start justify-between gap-3">
             <CardTitle className="text-base">Vitals</CardTitle>
+            {lastVitals && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={reuseLastVitals}
+                className="h-8 shrink-0"
+              >
+                Use last vitals
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="space-y-2">
-                <Label>BP</Label>
-                <Input placeholder="120/80" value={vitals.bp} onChange={(e) => setVitals({ ...vitals, bp: e.target.value })} className="h-11" />
+                <div className="flex min-h-5 items-center justify-between gap-2">
+                  <Label>BP</Label>
+                  {vitalHint("bp")}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input placeholder="120/80" value={vitals.bp} onChange={(e) => updateVital("bp", e.target.value)} className="h-11 min-w-0 flex-1" />
+                  <span className="w-10 shrink-0 text-xs text-muted-foreground">{vitalUnits.bp}</span>
+                </div>
               </div>
               <div className="space-y-2">
-                <Label>Temperature</Label>
-                <Input placeholder="98.6°F" value={vitals.temperature} onChange={(e) => setVitals({ ...vitals, temperature: e.target.value })} className="h-11" />
+                <div className="flex min-h-5 items-center justify-between gap-2">
+                  <Label>Temperature</Label>
+                  {vitalHint("temperature")}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input placeholder="98.6" value={vitals.temperature} onChange={(e) => updateVital("temperature", e.target.value)} className="h-11 min-w-0 flex-1" />
+                  <span className="w-10 shrink-0 text-xs text-muted-foreground">{vitalUnits.temperature}</span>
+                </div>
               </div>
               <div className="space-y-2">
-                <Label>Weight</Label>
-                <Input placeholder="70 kg" value={vitals.weight} onChange={(e) => setVitals({ ...vitals, weight: e.target.value })} className="h-11" />
+                <div className="flex min-h-5 items-center justify-between gap-2">
+                  <Label>Weight</Label>
+                  {vitalHint("weight")}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input placeholder="70" value={vitals.weight} onChange={(e) => updateVital("weight", e.target.value)} className="h-11 min-w-0 flex-1" />
+                  <span className="w-10 shrink-0 text-xs text-muted-foreground">{vitalUnits.weight}</span>
+                </div>
               </div>
               <div className="space-y-2">
-                <Label>Pulse</Label>
-                <Input placeholder="72 bpm" value={vitals.pulse} onChange={(e) => setVitals({ ...vitals, pulse: e.target.value })} className="h-11" />
+                <div className="flex min-h-5 items-center justify-between gap-2">
+                  <Label>Pulse</Label>
+                  {vitalHint("pulse")}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input placeholder="72" value={vitals.pulse} onChange={(e) => updateVital("pulse", e.target.value)} className="h-11 min-w-0 flex-1" />
+                  <span className="w-10 shrink-0 text-xs text-muted-foreground">{vitalUnits.pulse}</span>
+                </div>
               </div>
             </div>
           </CardContent>
