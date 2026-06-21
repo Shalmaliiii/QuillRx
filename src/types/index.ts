@@ -54,6 +54,7 @@ export interface PrescriptionData {
   patientId: string;
   symptoms: string | null;
   diagnosis: string | null;
+  knownAllergies: string | null;
   vitals: VitalData | null;
   medicines: MedicineData[];
   labTests: string | null;

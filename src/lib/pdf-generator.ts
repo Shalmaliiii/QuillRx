@@ -299,6 +299,28 @@ export async function generatePrescriptionPDF(
   }
 
   // ── SYMPTOMS & DIAGNOSIS (paired cards) ─────────────────────────────
+  if (prescription.knownAllergies) {
+    y = sectionHeader("KNOWN ALLERGIES", y);
+    const lines = wrapText(
+      prescription.knownAllergies,
+      helvetica,
+      10,
+      contentWidth - 24
+    );
+    const ch = 20 + lines.length * 13 + 8;
+    drawRoundedRect(page, margin, y - ch, contentWidth, ch, rgb(1, 0.965, 0.965), {
+      radius: 9,
+      borderColor: rgb(0.95, 0.82, 0.82),
+      borderWidth: 1,
+    });
+    let ly = y - 18;
+    for (const line of lines) {
+      text(line, margin + 12, ly, 10, helvetica, danger);
+      ly -= 13;
+    }
+    y -= ch + 20;
+  }
+
   if (prescription.symptoms || prescription.diagnosis) {
     const gap = 14;
     const colW = (contentWidth - gap) / 2;

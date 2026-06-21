@@ -31,6 +31,13 @@ export const patientSchema = z.object({
   existingConditions: z.string().optional(),
 });
 
+export const patientCreateSchema = patientSchema.pick({
+  fullName: true,
+  age: true,
+  gender: true,
+  phone: true,
+});
+
 export const queueIntakeSchema = z.object({
   name: z.string().min(2, "Please enter your name"),
   age: z.coerce.number().min(0).max(150, "Invalid age"),
@@ -57,6 +64,7 @@ export const prescriptionSchema = z.object({
   patientId: z.string().min(1, "Patient is required"),
   symptoms: z.string().optional(),
   diagnosis: z.string().optional(),
+  knownAllergies: z.string().optional(),
   vitals: z
     .object({
       bp: z.string().optional(),
@@ -91,6 +99,7 @@ export type QueueIntakeInput = z.infer<typeof queueIntakeSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type PatientInput = z.infer<typeof patientSchema>;
+export type PatientCreateInput = z.infer<typeof patientCreateSchema>;
 export type PrescriptionInput = z.infer<typeof prescriptionSchema>;
 export type DoctorProfileInput = z.infer<typeof doctorProfileSchema>;
 

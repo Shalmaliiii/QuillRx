@@ -3,12 +3,15 @@ import { prisma } from "@/lib/db";
 import { getAuthDoctorId } from "@/lib/auth";
 import { prescriptionSchema } from "@/lib/validators";
 import { buildSearchText, type MedicineCatalogEntry } from "@/lib/medicine-catalog";
-
-type PrescriptionPatientSearchRow = {
-  id: string;
-  fullName: string;
-  phone: string;
-};
+import { generateObjectId } from "@/lib/envelope-encryption";
+import {
+  buildPatientData,
+  buildPrescriptionData,
+  decryptPatientRecord,
+  decryptPrescriptionRecord,
+  patientMatchesSearch,
+} from "@/lib/protected-health-data";
+import { getDataPrivacySettings } from "@/lib/platform-settings";
 
 type PrescribedMedicine = {
   name: string;
@@ -17,6 +20,12 @@ type PrescribedMedicine = {
 
 function normalizeMedicineText(value?: string | null) {
   return (value ?? "").trim().replace(/\s+/g, " ");
+}
+
+function normalizeGender(value: string): "Male" | "Female" | "Other" {
+  return value === "Male" || value === "Female" || value === "Other"
+    ? value
+    : "Other";
 }
 
 async function savePrescribedMedicines(medicines: PrescribedMedicine[]) {
@@ -81,16 +90,13 @@ export async function GET(request: Request) {
     if (patientId) where.patientId = patientId;
 
     if (q) {
-      const patients: PrescriptionPatientSearchRow[] = await prisma.patient.findMany({
-        where: { doctorId },
-        select: { id: true, fullName: true, phone: true },
-      });
+      const patients = await prisma.patient.findMany({ where: { doctorId } });
       const matchingIds = patients
+        .map((patient) => decryptPatientRecord(patient, doctorId))
         .filter(
-          (p) =>
-            p.fullName.toLowerCase().includes(q) || p.phone.includes(q)
+          (patient) => patientMatchesSearch(patient, q)
         )
-        .map((p) => p.id);
+        .map((patient) => patient.id);
 
       if (matchingIds.length === 0) {
         return NextResponse.json({ prescriptions: [], total: 0, page, limit });
@@ -112,7 +118,14 @@ export async function GET(request: Request) {
       prisma.prescription.count({ where }),
     ]);
 
-    return NextResponse.json({ prescriptions, total, page, limit });
+    return NextResponse.json({
+      prescriptions: prescriptions.map((prescription) =>
+        decryptPrescriptionRecord(prescription, doctorId)
+      ),
+      total,
+      page,
+      limit,
+    });
   } catch (error) {
     console.error("Prescriptions list error:", error);
     return NextResponse.json(
@@ -152,16 +165,51 @@ export async function POST(request: Request) {
       );
     }
 
+    const privacySettings = await getDataPrivacySettings();
+    const knownAllergies = rest.knownAllergies?.trim();
+    if (knownAllergies) {
+      const decryptedPatient = decryptPatientRecord(patient, doctorId);
+      if (decryptedPatient.allergies?.trim() !== knownAllergies) {
+        await prisma.patient.update({
+          where: { id: patientId },
+          data: buildPatientData(
+            {
+              fullName: decryptedPatient.fullName,
+              age: decryptedPatient.age,
+              gender: normalizeGender(decryptedPatient.gender),
+              phone: decryptedPatient.phone,
+              weight: decryptedPatient.weight ?? undefined,
+              bp: decryptedPatient.bp ?? undefined,
+              diabetesStatus: decryptedPatient.diabetesStatus ?? undefined,
+              allergies: knownAllergies,
+              existingConditions: decryptedPatient.existingConditions ?? undefined,
+            },
+            doctorId,
+            patientId,
+            privacySettings
+          ),
+        });
+      }
+    }
+
     const totalAmount =
       (rest.consultationFee || 0) +
       (rest.additionalCharges || 0) -
       (rest.discount || 0);
 
+    const prescriptionId = generateObjectId();
     const prescription = await prisma.prescription.create({
       data: {
-        ...rest,
+        id: prescriptionId,
+        ...buildPrescriptionData(rest, doctorId, prescriptionId, {
+          fieldEncryption: privacySettings.fieldEncryption,
+        }),
         patientId,
         doctorId,
+        consultationMode: rest.consultationMode,
+        consultationFee: rest.consultationFee,
+        additionalCharges: rest.additionalCharges,
+        discount: rest.discount,
         totalAmount: Math.max(0, totalAmount),
         followUpDate: followUpDate ? new Date(followUpDate) : null,
       },
@@ -193,7 +241,9 @@ export async function POST(request: Request) {
       console.error("Medicine catalog save error:", error);
     }
 
-    return NextResponse.json(prescription, { status: 201 });
+    return NextResponse.json(decryptPrescriptionRecord(prescription, doctorId), {
+      status: 201,
+    });
   } catch (error) {
     console.error("Prescription create error:", error);
     return NextResponse.json(

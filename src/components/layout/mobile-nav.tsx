@@ -12,6 +12,7 @@ import {
   ListChecks,
   User,
   ClipboardList,
+  BarChart3,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,7 @@ import { useState } from "react";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/queue", label: "Queue", icon: ListChecks },
   { href: "/patients", label: "Patients", icon: Users },
   { href: "/prescriptions", label: "Prescriptions", icon: FileText },

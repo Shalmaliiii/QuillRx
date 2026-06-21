@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getAuthDoctorId } from "@/lib/auth";
 import { generatePrescriptionPDF } from "@/lib/pdf-generator";
 import type { PrescriptionData, DoctorProfile } from "@/types";
+import { decryptPrescriptionRecord } from "@/lib/protected-health-data";
 
 export async function GET(
   _request: Request,
@@ -47,19 +48,25 @@ export async function GET(
       );
     }
 
+    const decryptedPrescription = decryptPrescriptionRecord(
+      prescription,
+      doctorId
+    );
+    const patient = decryptedPrescription.patient;
+
     const prescriptionData: PrescriptionData = {
-      ...prescription,
+      ...decryptedPrescription,
       followUpDate: prescription.followUpDate?.toISOString() ?? null,
       createdAt: prescription.createdAt.toISOString(),
       updatedAt: prescription.updatedAt.toISOString(),
-      patient: prescription.patient
+      patient: patient
         ? {
-            ...prescription.patient,
-            createdAt: prescription.patient.createdAt.toISOString(),
-            updatedAt: prescription.patient.updatedAt.toISOString(),
+            ...patient,
+            createdAt: new Date(patient.createdAt as Date).toISOString(),
+            updatedAt: new Date(patient.updatedAt as Date).toISOString(),
           }
         : undefined,
-    };
+    } as PrescriptionData;
 
     const pdfBytes = await generatePrescriptionPDF(
       prescriptionData,

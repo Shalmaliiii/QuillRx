@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAuthDoctorId } from "@/lib/auth";
+import { decryptPrescriptionRecord } from "@/lib/protected-health-data";
 
 type Range = "daily" | "weekly" | "monthly";
 
@@ -197,8 +198,12 @@ export async function GET(req: NextRequest) {
       range,
       rangeLabel: RANGE_META[range],
       series: buckets,
-      upcomingFollowUps,
-      recentPrescriptions,
+      upcomingFollowUps: upcomingFollowUps.map((prescription) =>
+        decryptPrescriptionRecord(prescription, doctorId)
+      ),
+      recentPrescriptions: recentPrescriptions.map((prescription) =>
+        decryptPrescriptionRecord(prescription, doctorId)
+      ),
     });
   } catch (error) {
     console.error("Dashboard error:", error);

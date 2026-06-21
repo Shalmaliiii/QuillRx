@@ -366,6 +366,26 @@ These features require moderate development effort but significantly improve cli
 
 ---
 
+### 4.6 Company Console Security Upgrade
+
+**Problem:** The internal company console currently uses a token plus IP allowlist. IP allowlisting is too strict for a founder because the IP changes across home Wi-Fi, clinic networks, mobile hotspots, travel, and dynamic ISP assignments.
+
+**Solution:**
+- Replace strict IP-only access with a proper internal console login.
+- Add founder/admin accounts separate from doctor accounts.
+- Require MFA or passkeys for console access.
+- Add trusted-device sessions using secure HTTP-only cookies.
+- Treat IP address as a risk signal, not the only gate:
+  - Known device + new IP: allow or require lightweight verification.
+  - Unknown device + new IP: require MFA/passkey.
+  - Suspicious region or repeated failures: block and alert.
+- Keep `ADMIN_CONSOLE_ALLOWED_IPS` as an optional high-security override for production deployments that want network restrictions.
+- Add an append-only console audit log for login attempts, setting changes, privacy toggle updates, and analytics exports.
+
+**Impact:** Founder can access the console from trusted devices even when changing Wi-Fi, while the console remains protected against token theft and unknown-device access.
+
+---
+
 ## Technical Recommendations
 
 | Area               | Recommendation                                                                  |

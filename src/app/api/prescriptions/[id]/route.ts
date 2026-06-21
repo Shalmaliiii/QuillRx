@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAuthDoctorId } from "@/lib/auth";
+import { decryptPrescriptionRecord } from "@/lib/protected-health-data";
 
 export async function GET(
   _request: Request,
@@ -45,7 +46,7 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(prescription);
+    return NextResponse.json(decryptPrescriptionRecord(prescription, doctorId));
   } catch (error) {
     console.error("Prescription get error:", error);
     return NextResponse.json(

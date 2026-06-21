@@ -77,6 +77,8 @@ model Patient {
   diabetesStatus     String?
   allergies          String?
   existingConditions String?
+  encryptedData      Json?
+  encryptionVersion  Int            @default(0)
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
   doctor             Doctor         @relation(fields: [doctorId], references: [id])
@@ -84,7 +86,6 @@ model Patient {
   labReports         LabReport[]
 
   @@index([doctorId])
-  @@index([phone])
 }
 
 model LabReport {
@@ -136,10 +137,13 @@ model Prescription {
   patientId         String     @db.ObjectId
   symptoms          String?
   diagnosis         String?
+  knownAllergies    String?
   vitals            Vital?
   medicines         Medicine[]
   labTests          String?
   advice            String?
+  encryptedData     Json?
+  encryptionVersion Int        @default(0)
   followUpDate      DateTime?
   consultationMode  String?    @default("OFFLINE")
   consultationFee   Float?     @default(0)
@@ -154,6 +158,14 @@ model Prescription {
 
   @@index([doctorId])
   @@index([patientId])
+}
+
+model PlatformSetting {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  key       String   @unique
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model PrescriptionTemplate {

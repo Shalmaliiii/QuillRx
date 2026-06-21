@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { isConsoleIpAllowed } from "@/lib/console-auth";
 
-const publicPaths = ["/", "/login", "/register"];
+const publicPaths = ["/", "/login", "/register", "/founder", "/console"];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (pathname === "/console" && !isConsoleIpAllowed(request)) {
+    return new NextResponse("IP address is not allowed", { status: 403 });
+  }
 
   if (
     publicPaths.includes(pathname) ||

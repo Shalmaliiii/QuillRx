@@ -286,7 +286,9 @@ export default function PrescriptionDetailPage({
       )}
 
       {/* Clinical Notes */}
-      {(prescription.symptoms || prescription.diagnosis) && (
+      {(prescription.symptoms ||
+        prescription.diagnosis ||
+        prescription.knownAllergies) && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Clinical Notes</CardTitle>
@@ -302,6 +304,12 @@ export default function PrescriptionDetailPage({
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Diagnosis</p>
                 <p>{prescription.diagnosis}</p>
+              </div>
+            )}
+            {prescription.knownAllergies && (
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Known Allergies</p>
+                <p>{prescription.knownAllergies}</p>
               </div>
             )}
           </CardContent>

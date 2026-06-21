@@ -8,10 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
-import { patientSchema, type PatientInput } from "@/lib/validators";
+import { patientCreateSchema, type PatientCreateInput } from "@/lib/validators";
 import { usePageHeader } from "@/contexts/page-header-context";
 import { toast } from "@/lib/toast";
 
@@ -26,12 +25,12 @@ export default function NewPatientPage() {
     handleSubmit,
     setValue,
     formState: { errors },
-  } = useForm<PatientInput>({
-    resolver: zodResolver(patientSchema),
+  } = useForm<PatientCreateInput>({
+    resolver: zodResolver(patientCreateSchema),
     defaultValues: { gender: "Male" },
   });
 
-  const onSubmit = async (data: PatientInput) => {
+  const onSubmit = async (data: PatientCreateInput) => {
     setSubmitting(true);
     try {
       const res = await fetch("/api/patients", {
@@ -95,36 +94,6 @@ export default function NewPatientPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Weight</Label>
-                <Input placeholder="e.g. 70 kg" {...register("weight")} className="h-11" />
-              </div>
-              <div className="space-y-2">
-                <Label>Blood Pressure</Label>
-                <Input placeholder="e.g. 120/80" {...register("bp")} className="h-11" />
-              </div>
-              <div className="space-y-2">
-                <Label>Diabetes Status</Label>
-                <Select onValueChange={(val: string | null) => { if (val) setValue("diabetesStatus", val); }}>
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="None">None</SelectItem>
-                    <SelectItem value="Type 1">Type 1</SelectItem>
-                    <SelectItem value="Type 2">Type 2</SelectItem>
-                    <SelectItem value="Pre-diabetic">Pre-diabetic</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Allergies</Label>
-              <Textarea placeholder="Known allergies..." {...register("allergies")} />
-            </div>
-            <div className="space-y-2">
-              <Label>Existing Conditions</Label>
-              <Textarea placeholder="Existing medical conditions..." {...register("existingConditions")} />
             </div>
             <Button type="submit" className="w-full h-12" disabled={submitting}>
               {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}

@@ -43,11 +43,6 @@ type NewPatientForm = {
   phone: string;
   age: string;
   gender: PatientGender;
-  weight: string;
-  bp: string;
-  diabetesStatus: string;
-  allergies: string;
-  existingConditions: string;
 };
 
 type LatestPrescriptionVitals = {
@@ -67,11 +62,6 @@ const emptyNewPatientForm: NewPatientForm = {
   phone: "",
   age: "",
   gender: "Male",
-  weight: "",
-  bp: "",
-  diabetesStatus: "",
-  allergies: "",
-  existingConditions: "",
 };
 
 const vitalFields: VitalField[] = ["bp", "temperature", "weight", "pulse"];
@@ -109,12 +99,14 @@ export default function NewPrescriptionPage() {
   const [selectedPatient, setSelectedPatient] = useState<PatientData | null>(null);
   const [showNewPatientForm, setShowNewPatientForm] = useState(false);
   const [creatingPatient, setCreatingPatient] = useState(false);
+  const searchRequestRef = useRef(0);
   const [newPatient, setNewPatient] = useState<NewPatientForm>({
     ...emptyNewPatientForm,
   });
 
   const [symptoms, setSymptoms] = useState("");
   const [diagnosis, setDiagnosis] = useState("");
+  const [knownAllergies, setKnownAllergies] = useState("");
   const [consultationMode, setConsultationMode] =
     useState<ConsultationMode>("OFFLINE");
   const [vitals, setVitals] = useState<VitalsState>({ ...emptyVitals });
@@ -195,7 +187,10 @@ export default function NewPrescriptionPage() {
     if (preselectedPatientId) {
       fetch(`/api/patients/${preselectedPatientId}`)
         .then((res) => res.json())
-        .then(setSelectedPatient)
+        .then((patient: PatientData) => {
+          setSelectedPatient(patient);
+          setKnownAllergies(patient.allergies?.trim() ?? "");
+        })
         .catch(console.error);
     }
   }, [preselectedPatientId]);
@@ -299,20 +294,33 @@ export default function NewPrescriptionPage() {
     };
   }, [selectedPatient?.id]);
 
-  const searchPatients = useCallback(async (q: string) => {
+  const searchPatients = useCallback(async (rawQuery: string) => {
+    const q = rawQuery.trim();
+    const requestId = searchRequestRef.current + 1;
+    searchRequestRef.current = requestId;
+
+    setSearchResults([]);
+
     if (q.length < 2) {
-      setSearchResults([]);
+      setSearching(false);
       return;
     }
+
     setSearching(true);
     try {
       const res = await fetch(`/api/patients/search?q=${encodeURIComponent(q)}`);
       const data = await res.json();
-      setSearchResults(data);
+      if (searchRequestRef.current === requestId) {
+        setSearchResults(data);
+      }
     } catch {
-      setSearchResults([]);
+      if (searchRequestRef.current === requestId) {
+        setSearchResults([]);
+      }
     } finally {
-      setSearching(false);
+      if (searchRequestRef.current === requestId) {
+        setSearching(false);
+      }
     }
   }, []);
 
@@ -326,6 +334,7 @@ export default function NewPrescriptionPage() {
   const openNewPatientForm = () => {
     setShowNewPatientForm(true);
     setSearchResults([]);
+    setSearching(false);
 
     const query = searchQuery.trim();
     if (!query) return;
@@ -372,11 +381,6 @@ export default function NewPrescriptionPage() {
           phone,
           age,
           gender: newPatient.gender,
-          weight: newPatient.weight.trim() || undefined,
-          bp: newPatient.bp.trim() || undefined,
-          diabetesStatus: newPatient.diabetesStatus || undefined,
-          allergies: newPatient.allergies.trim() || undefined,
-          existingConditions: newPatient.existingConditions.trim() || undefined,
         }),
       });
 
@@ -387,6 +391,7 @@ export default function NewPrescriptionPage() {
 
       const patient = (await res.json()) as PatientData;
       setSelectedPatient(patient);
+      setKnownAllergies(patient.allergies?.trim() ?? "");
       setSearchQuery("");
       setSearchResults([]);
       setShowNewPatientForm(false);
@@ -401,8 +406,6 @@ export default function NewPrescriptionPage() {
 
   useEffect(() => {
     if (showNewPatientForm) {
-      setSearchResults([]);
-      setSearching(false);
       return;
     }
 
@@ -461,11 +464,12 @@ export default function NewPrescriptionPage() {
 
     setSubmitting(true);
     try {
-      const body = {
-        patientId: selectedPatient.id,
-        symptoms: symptoms || undefined,
-        diagnosis: diagnosis || undefined,
-        vitals: {
+    const body = {
+      patientId: selectedPatient.id,
+      symptoms: symptoms || undefined,
+      diagnosis: diagnosis || undefined,
+      knownAllergies: knownAllergies || undefined,
+      vitals: {
           bp: vitals.bp || undefined,
           temperature: vitals.temperature || undefined,
           weight: vitals.weight || undefined,
@@ -530,6 +534,7 @@ export default function NewPrescriptionPage() {
                   size="sm"
                   onClick={() => {
                     setSelectedPatient(null);
+                    setKnownAllergies("");
                     setSearchQuery("");
                     setShowNewPatientForm(false);
                   }}
@@ -545,7 +550,10 @@ export default function NewPrescriptionPage() {
                     <Input
                       placeholder="Search patient by name or phone..."
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        setSearchResults([]);
+                      }}
                       className="pl-10 h-11"
                     />
                   </div>
@@ -579,6 +587,7 @@ export default function NewPrescriptionPage() {
                         className="w-full text-left px-4 py-3 hover:bg-accent/50 transition-colors"
                         onClick={() => {
                           setSelectedPatient(p);
+                          setKnownAllergies(p.allergies?.trim() ?? "");
                           setSearchQuery("");
                           setSearchResults([]);
                         }}
@@ -643,44 +652,6 @@ export default function NewPrescriptionPage() {
                           )}
                         </div>
                       </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">Weight</Label>
-                        <Input
-                          placeholder="e.g. 70 kg"
-                          value={newPatient.weight}
-                          onChange={(e) => updateNewPatient("weight", e.target.value)}
-                          className="h-10"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">Blood Pressure</Label>
-                        <Input
-                          placeholder="e.g. 120/80"
-                          value={newPatient.bp}
-                          onChange={(e) => updateNewPatient("bp", e.target.value)}
-                          className="h-10"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Allergies</Label>
-                      <Textarea
-                        placeholder="Known allergies..."
-                        value={newPatient.allergies}
-                        onChange={(e) => updateNewPatient("allergies", e.target.value)}
-                        rows={2}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Existing Conditions</Label>
-                      <Textarea
-                        placeholder="Existing medical conditions..."
-                        value={newPatient.existingConditions}
-                        onChange={(e) =>
-                          updateNewPatient("existingConditions", e.target.value)
-                        }
-                        rows={2}
-                      />
                     </div>
                     <div className="flex justify-end">
                       <Button
@@ -816,6 +787,15 @@ export default function NewPrescriptionPage() {
                 placeholder="Clinical diagnosis..."
                 value={diagnosis}
                 onChange={(e) => setDiagnosis(e.target.value)}
+                rows={2}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Known Allergies</Label>
+              <Textarea
+                placeholder="Known allergies from previous prescriptions..."
+                value={knownAllergies}
+                onChange={(e) => setKnownAllergies(e.target.value)}
                 rows={2}
               />
             </div>

@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAuthDoctorId } from "@/lib/auth";
+import { generateObjectId } from "@/lib/envelope-encryption";
+import {
+  buildPatientData,
+  decryptPatientRecord,
+} from "@/lib/protected-health-data";
+import { getDataPrivacySettings } from "@/lib/platform-settings";
 
 type PatientMatchCandidate = {
   id: string;
@@ -88,37 +94,55 @@ export async function POST(
         where: { id: patientId, doctorId },
         select: {
           id: true,
+          doctorId: true,
           fullName: true,
           phone: true,
           age: true,
           gender: true,
+          weight: true,
+          bp: true,
+          diabetesStatus: true,
+          allergies: true,
+          existingConditions: true,
+          encryptedData: true,
+          encryptionVersion: true,
           updatedAt: true,
         },
       });
 
-      if (!linked || !matchesQueuePatient(linked, queueIdentity)) {
+      const linkedPatient = linked
+        ? decryptPatientRecord(linked, doctorId)
+        : null;
+
+      if (!linkedPatient || !matchesQueuePatient(linkedPatient, queueIdentity)) {
         patientId = null;
       }
     }
 
     if (!patientId) {
       const candidates = await prisma.patient.findMany({
-        where: {
-          doctorId,
-          fullName: { equals: entry.name, mode: "insensitive" },
-        },
+        where: { doctorId },
         select: {
           id: true,
+          doctorId: true,
           fullName: true,
           phone: true,
           age: true,
           gender: true,
+          weight: true,
+          bp: true,
+          diabetesStatus: true,
+          allergies: true,
+          existingConditions: true,
+          encryptedData: true,
+          encryptionVersion: true,
           updatedAt: true,
         },
-        take: 50,
+        orderBy: { updatedAt: "desc" },
       });
 
       const match = candidates
+        .map((patient) => decryptPatientRecord(patient, doctorId))
         .filter((patient) => matchesQueuePatient(patient, queueIdentity))
         .sort((a, b) => {
           const scoreDiff =
@@ -130,13 +154,28 @@ export async function POST(
     }
 
     if (!patientId) {
+      const privacySettings = await getDataPrivacySettings();
+      const newPatientId = generateObjectId();
       const created = await prisma.patient.create({
         data: {
+          id: newPatientId,
           doctorId,
-          fullName: entry.name,
-          age: entry.age ?? 0,
-          gender: entry.gender ?? "Other",
-          phone: entry.phone ?? "",
+          ...buildPatientData(
+            {
+              fullName: entry.name,
+              age: entry.age ?? 0,
+              gender:
+                entry.gender === "Male" ||
+                entry.gender === "Female" ||
+                entry.gender === "Other"
+                  ? entry.gender
+                  : "Other",
+              phone: entry.phone ?? "",
+            },
+            doctorId,
+            newPatientId,
+            privacySettings
+          ),
         },
         select: { id: true },
       });
